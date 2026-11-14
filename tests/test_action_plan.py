@@ -138,3 +138,14 @@ def test_tomorrow_quota_already_covered():
     text = _text(build_steps(_state(swords), odds, 1.5, quota=3000, next_quota=4350))
 
     assert "Ngày mai cống 4,350: sau khi nộp còn 9,000 (đủ)" in text
+
+
+def test_free_reroll_suggested_when_no_offer_helps():
+    sword = _sword(1, 5000, 8)
+    state = _state((sword,), shopping=True, offers=(Offer("pin", 1, False),))
+    sim = ShopSimulation(buy={"pin": {1: RISKY}})
+
+    text = _text(build_steps(state, {1: (RISKY, SAFE)}, 1.5, shop_sim=sim,
+                             reroll_text="1 LẦN MIỄN PHÍ"))
+
+    assert "đổi lượt (miễn phí)" in text

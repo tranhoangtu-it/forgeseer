@@ -42,6 +42,7 @@ class LiveSource:
         self._shop_sim = ShopSimulation()
         self._quota = 0.0
         self._next_quota = 0.0
+        self._reroll_text = ""
         self._grade_odds = GradeOddsTable()
         self._multiplier = DEFAULT_MULTIPLIER
         self._session: Any = None
@@ -70,6 +71,11 @@ class LiveSource:
         """Cống ngày mai do hàm của game tính trên campaign giả lập (0 nếu chưa xác minh được)."""
         with self._lock:
             return self._next_quota
+
+    def reroll_text(self) -> str:
+        """Chữ giá đổi lượt trên máy relic ("390 G" / "1 LẦN MIỄN PHÍ"); rỗng ngoài giờ mua sắm."""
+        with self._lock:
+            return self._reroll_text
 
     def grade_odds(self) -> GradeOddsTable:
         with self._lock:
@@ -130,6 +136,8 @@ class LiveSource:
             quota = payload.get("quota")
             if isinstance(quota, (int, float)):
                 self._quota = float(quota)
+            reroll = payload.get("rerollText")
+            self._reroll_text = reroll if isinstance(reroll, str) else ""
             next_quota = payload.get("nextQuota")
             self._next_quota = float(next_quota) if isinstance(next_quota, (int, float)) else 0.0
             if isinstance(multiplier, (int, float)) and multiplier > 1:

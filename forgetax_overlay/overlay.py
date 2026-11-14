@@ -234,7 +234,7 @@ class Overlay:
     # ---------- vẽ ----------
     def render(self) -> None:
         odds, multiplier, shop_sim, quota, grade_odds = ({}, 1.5, None, 0.0, None)
-        next_quota = 0.0
+        next_quota, reroll_text = 0.0, ""
         texts = self.texts
         if self.live is not None:
             texts = self.live.texts() or texts  # tên chính thức mới nhất từ game
@@ -243,6 +243,7 @@ class Overlay:
                 shop_sim = self.live.shop_simulation()
                 quota = self.live.quota()
                 next_quota = self.live.next_quota()
+                reroll_text = self.live.reroll_text()
                 grade_odds = self.live.grade_odds()
         names = {**self.names, **{k: t.name for k, t in texts.items()}}
         descriptions = {k: t.description for k, t in texts.items()}
@@ -255,7 +256,7 @@ class Overlay:
         lines = lines + [(self.status, DIM), (hint, WARN if self._drag_mode else DIM)]
         _fill_text(self.text, lines)
         steps = build_steps(self.state, odds, multiplier, quota, grade_odds, shop_sim, names, merchant,
-                            fever_strikes, next_quota)
+                            fever_strikes, next_quota, reroll_text)
         _fill_text(self.panel_text, steps)
         self.panel.update_idletasks()  # đặt khung "Việc cần làm" sát mép phải màn hình
         x = self.panel.winfo_screenwidth() - self.panel.winfo_reqwidth() - PANEL_MARGIN

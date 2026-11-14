@@ -346,6 +346,26 @@ function forecastQuota(roomObj, quota) {
   return lastForecast;
 }
 
+// ---------- giá đổi lượt máy relic ----------
+// Đọc chữ đang hiển thị (TextMesh.get_text - getter của Unity) của ForgeRelicVending.rerollText.
+const VENDING_OFF = fieldOffset('vending');
+let rerollTextOff = null;
+let getTextMethod = null;
+
+function readRerollText(roomObj) {
+  const vending = roomObj.add(VENDING_OFF).readPointer();
+  if (vending.isNull()) return '';
+  if (rerollTextOff === null) {
+    const f = instanceFields(api.object_get_class(vending)).find(x => x.name === 'rerollText');
+    rerollTextOff = f ? f.offset : -1;
+  }
+  if (rerollTextOff < 0) return '';
+  const mesh = vending.add(rerollTextOff).readPointer();
+  if (mesh.isNull()) return '';
+  if (getTextMethod === null) getTextMethod = methodByName(api.object_get_class(mesh), 'get_text', 0);
+  return readManagedString(invoke(getTextMethod, mesh, [])) || '';
+}
+
 // ---------- tên + mô tả relic chính thức (bảng ngôn ngữ đã giải mã của game) ----------
 // ForgeLocalization có field tĩnh Dictionary<lang, Dictionary<key, text>>; khóa relic:
 // item.<id>.name / item.<id>.description. Chỉ đọc bộ nhớ, không gọi hàm của game.
@@ -422,11 +442,12 @@ Interceptor.attach(update.readPointer(), {
       const extra = collectOdds(args[0]);
       const changed = simulateShop(args[0], extra.multiplier);
       const quota = readQuota(args[0]);
-      const key = json + JSON.stringify(extra) + quota;
+      const reroll = json.includes('"shopping":true') ? readRerollText(args[0]) : '';
+      const key = json + JSON.stringify(extra) + quota + reroll;
       if (json && (key !== lastJson || changed)) {
         lastJson = key;
         const message = { kind: 'run', json, odds: extra.odds, multiplier: extra.multiplier, quota,
-                          nextQuota: forecastQuota(args[0], quota) };
+                          nextQuota: forecastQuota(args[0], quota), rerollText: reroll };
         if (changed) {
           message.shopSim = changed.shopSim;
           if (changed.gradeOdds) message.gradeOdds = changed.gradeOdds;

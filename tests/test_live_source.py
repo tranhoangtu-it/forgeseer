@@ -135,3 +135,13 @@ def test_run_message_with_next_quota():
     live.handle_message(message)
 
     assert live.next_quota() == 3350.0
+
+
+def test_run_message_with_reroll_text():
+    live = LiveSource(clock=lambda: 1.0)
+    message = _run_message({"campaign": {}, "swords": []})
+    message["payload"]["rerollText"] = "390 G"
+
+    live.handle_message(message)
+
+    assert live.reroll_text() == "390 G"

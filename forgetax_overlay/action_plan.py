@@ -9,6 +9,7 @@ from .advisor import GradeOddsTable, ShopSimulation, SwordOdds
 from .fever_calibration import DEFAULT_FEVER_STRIKES
 from .merchant_advice import MerchantItem
 from .relic_names import display_name
+from .reroll_advice import parse_reroll_text, reroll_line
 from .save_reader import RunState, Sword
 from .shop_advice import best_break_reduction, best_purchase, target_sword
 from .sword_section import sword_verdict
@@ -81,7 +82,7 @@ def build_steps(state: RunState | None, odds: OddsMap, multiplier: float, quota:
                 names: dict[str, str] | None = None,
                 merchant: list[MerchantItem] | None = None,
                 fever_strikes: int = DEFAULT_FEVER_STRIKES,
-                next_quota: float = 0.0) -> list[Line]:
+                next_quota: float = 0.0, reroll_text: str = "") -> list[Line]:
     lines: list[Line] = [("Việc cần làm", TITLE)]
     if state is None:
         return lines + [("Chưa có dữ liệu lượt chơi.", DIM)]
@@ -138,6 +139,10 @@ def build_steps(state: RunState | None, odds: OddsMap, multiplier: float, quota:
                 lines.append((f"Cân nhắc relic {display_name(offer_id, names)}{swap}: @+{grade} gãy "
                               f"{before.destruction:.0%}->{after.destruction:.0%} (lợi khi kiếm lên cao)",
                               NORMAL))
+            reroll = reroll_line(parse_reroll_text(reroll_text), state.wallet,
+                                 has_good_offer=hint is not None)
+            if reroll is not None:
+                lines.append(reroll)
 
     for item in sorted(merchant or [], key=lambda i: i.ratio or 0, reverse=True):  # 5. Thương nhân
         if item.verdict == "MUA":
