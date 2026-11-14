@@ -219,5 +219,10 @@ def _parse_shop_sim(raw: Any) -> ShopSimulation:
     swap_raw = raw.get("swap")
     swap = ({str(k): _parse_by_id(v) for k, v in swap_raw.items() if isinstance(v, dict)}
             if isinstance(swap_raw, dict) else {})
+    grade = raw.get("grade") if isinstance(raw.get("grade"), dict) else {}
+    grade_swap_raw = grade.get("swap")
+    grade_swap = ({str(k): _parse_by_id(v) for k, v in grade_swap_raw.items() if isinstance(v, dict)}
+                  if isinstance(grade_swap_raw, dict) else {})
     return ShopSimulation(buy=_parse_by_id(raw.get("buy")), drop=_parse_by_id(raw.get("drop")),
-                          swap=swap)
+                          swap=swap, grade_base=_parse_per_sword(grade.get("base")),
+                          grade_buy=_parse_by_id(grade.get("buy")), grade_swap=grade_swap)

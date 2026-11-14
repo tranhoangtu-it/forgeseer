@@ -38,6 +38,10 @@ class ShopSimulation:
     buy: dict[str, PerSword] = field(default_factory=dict)             # mua món (kệ còn chỗ)
     drop: dict[str, PerSword] = field(default_factory=dict)            # bỏ relic đang có
     swap: dict[str, dict[str, PerSword]] = field(default_factory=dict)  # mua món X thay relic Y (kệ đầy)
+    # Tỉ lệ theo grade mục tiêu (vd. +8, +12): hiện tại / sau khi mua / sau khi đổi.
+    grade_base: dict[int, SwordOdds] = field(default_factory=dict)
+    grade_buy: dict[str, dict[int, SwordOdds]] = field(default_factory=dict)
+    grade_swap: dict[str, dict[str, dict[int, SwordOdds]]] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)

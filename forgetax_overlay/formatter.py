@@ -9,7 +9,7 @@ from .fever_calibration import DEFAULT_FEVER_STRIKES
 from .merchant_advice import MerchantItem
 from .relic_names import display_name
 from .save_reader import RunState, Sword
-from .shop_advice import best_drop, buy_line, drop_line, target_sword
+from .shop_advice import best_drop, buy_line, drop_line, grade_line, target_sword
 from .sword_section import sword_lines, tribute_lines
 
 # Tag màu dùng chung với overlay.py
@@ -131,6 +131,9 @@ def _shop_lines(s: RunState, names: dict[str, str], descriptions: dict[str, str]
             effect = buy_line(o.id, ctx.target, ctx.odds, ctx.sim, ctx.multiplier, ctx.names)
             if effect is not None:
                 lines.append(effect)
+            by_grade = grade_line(o.id, ctx.target, ctx.sim, ctx.multiplier)
+            if by_grade is not None:
+                lines.append(by_grade)
     return lines
 
 

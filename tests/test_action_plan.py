@@ -108,3 +108,15 @@ def test_choose_tribute_uses_small_finished_swords_first():
     chosen = choose_tribute(swords, need=3000, finished={1, 2, 3})
 
     assert [s.serial for s in chosen] == [3, 2]
+
+
+def test_break_reducing_relic_suggested_when_no_ev_gain_now():
+    sword = _sword(1, 320, 0)
+    g12 = SwordOdds.from_permille([400, 50, 50, 450, 50])
+    safer = SwordOdds.from_permille([300, 50, 50, 550, 50])
+    state = _state((sword,), shopping=True, offers=(Offer("pin", 1, False),))
+    sim = ShopSimulation(buy={"pin": {1: SAFE}}, grade_base={12: g12}, grade_buy={"pin": {12: safer}})
+
+    text = _text(build_steps(state, {1: (SAFE, SAFE)}, 1.5, shop_sim=sim, names={"pin": "Kim Ghim"}))
+
+    assert "Cân nhắc relic Kim Ghim" in text and "@+12 gãy 40%->30%" in text

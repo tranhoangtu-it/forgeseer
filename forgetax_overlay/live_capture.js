@@ -198,13 +198,38 @@ function editRelics(relics, { addId = null, removeId = null } = {}) {
   return out;
 }
 
-// Tỉ lệ của mọi kiếm với một campaign giả lập (tạo mới từ JSON; campaign thật giữ nguyên).
-function simulate(campaign, relics, swords) {
+// Tỉ lệ của mọi kiếm + tỉ lệ ở các grade mục tiêu với một campaign giả lập
+// (tạo mới từ JSON; campaign thật giữ nguyên).
+function simulate(campaign, relics, swords, target) {
   const json = api.string_new(Memory.allocUtf8String(JSON.stringify({ ...campaign, relics })));
   const fake = invoke(fromJson, NULL, [json, campaignType]);
   const perSword = {};
   for (const [serial, s] of swords) perSword[serial] = oddsFor(s, fake, false);
-  return perSword;
+  return { perSword, byGrade: oddsAtGrades(fake, target) };
+}
+
+// Grade mục tiêu để chấm relic khi kiếm còn thấp (cộng thêm grade kiếm giá trị nhất).
+const SHOP_TARGET_GRADES = [8, 12];
+const BALANCE_BASE_VALUE_OFF = 24;  // ForgeEnhancementBalance.baseValue (double, =320)
+
+function shopTarget(roomObj, swords, multiplier) {
+  let g0 = 0;
+  let topValue = -1;
+  for (const s of swords.values()) {
+    const v = s.add(SWORD_VALUE_OFF).readDouble();
+    if (v > topValue) { topValue = v; g0 = s.add(SWORD_GRADE_OFF).readS32(); }
+  }
+  const balance = roomObj.add(BALANCE_OFF).readPointer();
+  const base = balance.isNull() ? 320 : balance.add(BALANCE_BASE_VALUE_OFF).readDouble();
+  const grades = [...new Set([...SHOP_TARGET_GRADES, ...(topValue > 0 ? [g0] : [])])].sort((a, b) => a - b);
+  const valueAt = g => (topValue > 0 ? topValue * Math.pow(multiplier, g - g0) : base * Math.pow(multiplier, g));
+  return { grades, valueAt };
+}
+
+function oddsAtGrades(campaignObj, target) {
+  const out = {};
+  for (const g of target.grades) out[g] = oddsAtGrade(campaignObj, g, target.valueAt(g), false);
+  return out;
 }
 
 // ---------- bảng tỉ lệ theo grade (cho kế hoạch nhiều nhát) ----------
@@ -261,17 +286,26 @@ function simulateShop(roomObj, multiplier) {
   if (key === lastSimKey) return null;
   lastSimKey = key;
 
-  const sim = { buy: {}, drop: {}, swap: {} };
-  for (const id of owned) sim.drop[id] = simulate(campaign, editRelics(relics, { removeId: id }), swords);
+  const target = shopTarget(roomObj, swords, multiplier);
+  const sim = { buy: {}, drop: {}, swap: {},
+                grade: { base: oddsAtGrades(campaignObj, target), buy: {}, swap: {} } };
+  for (const id of owned) {
+    sim.drop[id] = simulate(campaign, editRelics(relics, { removeId: id }), swords, target).perSword;
+  }
   for (const offer of offerIds) {
     const alreadyOwned = owned.includes(offer);  // mua trùng -> tăng rank, không cần chỗ
     if (!shelfFull || alreadyOwned) {
-      sim.buy[offer] = simulate(campaign, editRelics(relics, { addId: offer }), swords);
+      const r = simulate(campaign, editRelics(relics, { addId: offer }), swords, target);
+      sim.buy[offer] = r.perSword;
+      sim.grade.buy[offer] = r.byGrade;
       continue;
     }
     sim.swap[offer] = {};
+    sim.grade.swap[offer] = {};
     for (const id of owned) {
-      sim.swap[offer][id] = simulate(campaign, editRelics(relics, { removeId: id, addId: offer }), swords);
+      const r = simulate(campaign, editRelics(relics, { removeId: id, addId: offer }), swords, target);
+      sim.swap[offer][id] = r.perSword;
+      sim.grade.swap[offer][id] = r.byGrade;
     }
   }
   return { shopSim: sim, gradeOdds: gradeOddsTable(campaignObj, swords, multiplier) };

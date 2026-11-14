@@ -89,6 +89,24 @@ def test_run_message_with_shop_simulation():
     assert sim.swap["pin"]["knot"][11].destruction == 0.25
 
 
+def test_shop_simulation_with_grade_odds():
+    live = LiveSource(clock=lambda: 1.0)
+    message = _run_message({"campaign": {}, "swords": []})
+    message["payload"]["shopSim"] = {
+        "buy": {}, "drop": {}, "swap": {},
+        "grade": {"base": {"12": [400, 50, 50, 450, 50]},
+                  "buy": {"nail": {"12": [300, 50, 50, 550, 50]}},
+                  "swap": {"pin": {"knot": {"8": [100, 50, 50, 750, 50]}}}},
+    }
+
+    live.handle_message(message)
+
+    sim = live.shop_simulation()
+    assert sim.grade_base[12].destruction == 0.4
+    assert sim.grade_buy["nail"][12].destruction == 0.3
+    assert sim.grade_swap["pin"]["knot"][8].destruction == 0.1
+
+
 def test_run_message_with_quota_and_grade_odds():
     live = LiveSource(clock=lambda: 1.0)
     message = _run_message({"campaign": {}, "swords": []})

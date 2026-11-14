@@ -10,7 +10,7 @@ from .fever_calibration import DEFAULT_FEVER_STRIKES
 from .merchant_advice import MerchantItem
 from .relic_names import display_name
 from .save_reader import RunState, Sword
-from .shop_advice import best_purchase, target_sword
+from .shop_advice import best_break_reduction, best_purchase, target_sword
 from .sword_section import sword_verdict
 from .tribute import tribute_status
 
@@ -114,6 +114,14 @@ def build_steps(state: RunState | None, odds: OddsMap, multiplier: float, quota:
             swap = f", bỏ {display_name(drop, names)}" if drop else ""
             lines.append((f"Mua relic {display_name(offer_id, names)}{swap} "
                           f"(EV x{ev0:.2f}->{ev1:.2f}; trả bằng kiếm +0)", GOOD))
+        else:
+            hint = best_break_reduction(offer_ids, top, shop_sim or ShopSimulation(), multiplier)
+            if hint is not None:
+                offer_id, drop, grade, before, after = hint
+                swap = f", bỏ {display_name(drop, names)}" if drop else ""
+                lines.append((f"Cân nhắc relic {display_name(offer_id, names)}{swap}: @+{grade} gãy "
+                              f"{before.destruction:.0%}->{after.destruction:.0%} (lợi khi kiếm lên cao)",
+                              NORMAL))
 
     for item in sorted(merchant or [], key=lambda i: i.ratio or 0, reverse=True):  # 5. Thương nhân
         if item.verdict == "MUA":

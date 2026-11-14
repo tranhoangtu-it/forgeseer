@@ -1,6 +1,8 @@
 from forgetax_overlay.advisor import ShopSimulation, SwordOdds
 from forgetax_overlay.save_reader import Sword
-from forgetax_overlay.shop_advice import best_drop, buy_line, drop_line
+from forgetax_overlay.shop_advice import (
+    best_break_reduction, best_drop, buy_line, drop_line, grade_line,
+)
 
 NOW = SwordOdds.from_permille([359, 42, 62, 496, 41])
 BETTER = SwordOdds.from_permille([250, 42, 62, 600, 46])
@@ -60,3 +62,39 @@ def test_no_target_sword_gives_no_lines():
 
     assert buy_line("pin", None, ODDS, sim, 1.5, {}) is None
     assert best_drop(None, ODDS, sim, 1.5) is None
+
+
+G8 = SwordOdds.from_permille([100, 50, 50, 750, 50])
+G12 = SwordOdds.from_permille([400, 50, 50, 450, 50])
+G12_SAFER = SwordOdds.from_permille([300, 50, 50, 550, 50])
+
+
+def test_grade_line_shows_break_odds_at_target_grades():
+    sim = ShopSimulation(grade_base={8: G8, 12: G12}, grade_buy={"pin": {8: G8, 12: G12_SAFER}})
+
+    text, tag = grade_line("pin", _sword(), sim, 1.5)
+
+    assert "@+8: gãy 10%->10%" in text and "@+12: gãy 40%->30%" in text
+    assert tag == "good"
+
+
+def test_grade_line_for_full_shelf_uses_swap_picked_for_target():
+    sim = ShopSimulation(swap={"pin": {"nail": {6: WORSE}, "knot": {6: BETTER}}},
+                         grade_base={12: G12},
+                         grade_swap={"pin": {"nail": {12: G12}, "knot": {12: G12_SAFER}}})
+
+    text, _ = grade_line("pin", _sword(), sim, 1.5)
+
+    assert "@+12: gãy 40%->30%" in text
+
+
+def test_grade_line_none_without_grade_data():
+    assert grade_line("pin", _sword(), ShopSimulation(), 1.5) is None
+
+
+def test_best_break_reduction_picks_largest_drop_at_highest_grade():
+    sim = ShopSimulation(grade_base={8: G8, 12: G12},
+                         grade_buy={"pin": {12: G12_SAFER}, "nail": {12: G12}})
+
+    assert best_break_reduction(["nail", "pin"], None, sim, 1.5) == ("pin", None, 12, G12, G12_SAFER)
+    assert best_break_reduction(["nail"], None, sim, 1.5) is None
