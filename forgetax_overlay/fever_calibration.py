@@ -1,9 +1,10 @@
 """Hiệu chỉnh số nhát người chơi đập được trong một đợt Xuất Thần.
 
-Xuất Thần kéo dài theo thời gian (~4 giây) nên số nhát phụ thuộc tốc độ tay. Theo dõi các
-bản chụp trạng thái liên tiếp: đợt bắt đầu khi ``fever_remaining`` từ 0 chuyển sang > 0
-(mốc = số nhát ở bản chụp trước đó, tức tính cả nhát kích hoạt), kết thúc khi về 0 hoặc
-kiếm biến mất. Trung bình cộng dồn được lưu trong config.json (khóa ``fever``).
+Xuất Thần kéo dài theo thời gian (đo được: feverRemaining bắt đầu ~4.0 giây) nên số nhát phụ
+thuộc tốc độ tay. Đã quan sát: nhát thường thứ 10 kích hoạt (feverRemaining > 0 ngay khi
+strikes tăng lên), các nhát sau đó mới là nhát Xuất Thần. Theo dõi bản chụp liên tiếp: mốc =
+min(nhát hiện tại, nhát ở bản chụp trước + 1) để không tính nhát kích hoạt, kết thúc khi
+feverRemaining về 0 hoặc kiếm biến mất. Trung bình cộng dồn được lưu trong config.json (khóa ``fever``).
 """
 from __future__ import annotations
 
@@ -50,7 +51,7 @@ def observe(tracker: FeverTracker, swords: Iterable[Sword]) -> tuple[FeverTracke
         in_fever = sw.fever_remaining > 0
         before = tracker.prev.get(serial)
         if in_fever and serial not in start and before is not None and not before[1]:
-            start[serial] = before[0]
+            start[serial] = min(sw.strikes, before[0] + 1)
         if serial in start:
             if in_fever:
                 last[serial] = sw.strikes

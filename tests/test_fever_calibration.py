@@ -23,13 +23,14 @@ def test_stats_running_average_rounds():
 
 def test_observe_counts_strikes_from_before_fever_until_it_ends():
     tracker = FeverTracker()
-    tracker, done = observe(tracker, [_sword(strikes=10)])
-    tracker, done1 = observe(tracker, [_sword(strikes=11, fever=3.5)])
+    # số liệu thật: nhát thứ 10 (thường) kích hoạt, rồi đập nhát 11..16 trong ~4 giây
+    tracker, done = observe(tracker, [_sword(strikes=9)])
+    tracker, done1 = observe(tracker, [_sword(strikes=10, fever=3.8)])
     tracker, done2 = observe(tracker, [_sword(strikes=15, fever=1.0)])
     tracker, done3 = observe(tracker, [_sword(strikes=16, fever=0.0)])
 
     assert done == done1 == done2 == []
-    assert done3 == [6]  # nhát 11..16
+    assert done3 == [6]
 
 
 def test_observe_ignores_fever_already_running_when_first_seen():
@@ -41,10 +42,10 @@ def test_observe_ignores_fever_already_running_when_first_seen():
 
 def test_observe_closes_fever_when_sword_disappears():
     tracker, _ = observe(FeverTracker(), [_sword(strikes=10)])
-    tracker, _ = observe(tracker, [_sword(strikes=13, fever=2.0)])
+    tracker, _ = observe(tracker, [_sword(strikes=13, fever=2.0)])  # nhát 11 kích hoạt bị lỡ
     tracker, done = observe(tracker, [])
 
-    assert done == [3]
+    assert done == [2]
 
 
 def test_observe_skips_zero_strike_fever():
