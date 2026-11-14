@@ -29,7 +29,7 @@ def format_state(state: RunState | None, names: dict[str, str] | None = None,
                  grade_odds: GradeOddsTable | None = None,
                  merchant: list[MerchantItem] | None = None,
                  fever_strikes: int = DEFAULT_FEVER_STRIKES,
-                 next_quota: float = 0.0) -> list[Line]:
+                 next_quota: float = 0.0, runs_summary: str = "") -> list[Line]:
     """``names``: id relic -> tên; ``odds``/``shop_sim``/``quota``/``grade_odds``: chỉ có khi LIVE."""
     if state is None:
         return [("ForgeTax", TITLE), ("Chưa có lượt chơi nào được lưu.", DIM)]
@@ -47,6 +47,8 @@ def format_state(state: RunState | None, names: dict[str, str] | None = None,
     if merchant:
         lines += _merchant_lines(merchant, names)
     lines += _stats_lines(state, fever_strikes)
+    if runs_summary:
+        lines.append((runs_summary, DIM))
     return lines
 
 

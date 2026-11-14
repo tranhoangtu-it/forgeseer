@@ -18,6 +18,7 @@ from .fever_calibration import FeverTracker, load_fever_stats, observe, save_fev
 from .live_source import LiveSource
 from .merchant_advice import evaluate_merchant, merchant_active
 from .relic_names import load_relic_texts
+from .run_log import DEFAULT_RUN_LOG, append_run, load_runs, record_from_state, summary_line
 from .save_reader import RunState, SaveReadError, find_run_save, load_run_state
 
 BG = "#101014"
@@ -96,6 +97,7 @@ class Overlay:
         self.config_file = config_file
         self._fever_tracker = FeverTracker()
         self._fever_stats = load_fever_stats(config_file)
+        self._runs = load_runs(DEFAULT_RUN_LOG)
         self.state: RunState | None = None
         self.status = "Đang tìm file save..."
         self._last_sig: tuple[str, int] | None = None
@@ -194,6 +196,7 @@ class Overlay:
             self._last_live_state = state
             self.state = state
             self._track_fever(state)
+            self._log_finished_run(state)
             self._last_sig = None  # khi mất live, buộc đọc lại file
             self._set_status(f"LIVE {time.strftime('%H:%M:%S')}")
         return True
@@ -205,6 +208,14 @@ class Overlay:
             for count in counts:
                 self._fever_stats = self._fever_stats.add(count)
             save_fever_stats(self.config_file, self._fever_stats)
+
+    def _log_finished_run(self, state: RunState) -> None:
+        """Lượt vừa kết thúc -> ghi một dòng vào runs.jsonl (mỗi lượt một lần)."""
+        if not state.finished:
+            return
+        record = record_from_state(state)
+        if append_run(DEFAULT_RUN_LOG, record, self._runs):
+            self._runs = [*self._runs, record]
 
     def _refresh_from_file(self) -> None:
         path = find_run_save(self.save_dir)
@@ -224,6 +235,7 @@ class Overlay:
             self._set_status("Game đang ghi save, chờ...")
             return
         self._last_sig = sig
+        self._log_finished_run(self.state)
         live_note = f" | {self.live.status}" if self.live is not None else ""
         self._set_status(f"File save {time.strftime('%H:%M:%S')}{live_note}")
 
@@ -251,7 +263,8 @@ class Overlay:
         merchant = (evaluate_merchant(self.state, odds, multiplier, grade_odds, fever_strikes)
                     if self.state is not None and merchant_active(self.state) else [])
         lines = format_state(self.state, names, odds, multiplier, descriptions, shop_sim,
-                             quota, grade_odds, merchant, fever_strikes, next_quota)
+                             quota, grade_odds, merchant, fever_strikes, next_quota,
+                             summary_line(self._runs))
         hint = "F9: khóa vị trí" if self._drag_mode else "F8 ẩn | F9 di chuyển | F10 thoát"
         lines = lines + [(self.status, DIM), (hint, WARN if self._drag_mode else DIM)]
         _fill_text(self.text, lines)

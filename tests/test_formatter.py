@@ -164,3 +164,9 @@ def test_tribute_line_shows_tomorrow_quota():
     text = _texts(format_state(_state(), quota=800, next_quota=4350))
 
     assert "ngày mai 4,350" in text
+
+
+def test_run_summary_appended_when_given():
+    text = _texts(format_state(_state(), runs_summary="Lượt chơi: 2"))
+
+    assert "Lượt chơi: 2" in text

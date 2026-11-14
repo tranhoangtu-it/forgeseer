@@ -133,3 +133,12 @@ def test_sword_tag_uses_visible_grade_and_location():
     assert Sword(**base, place=3).tag == "+8 trên đe"
     assert Sword(**base, place=2).tag == "+8 đang cầm"
     assert not Sword(**base, place=5).is_live  # đã đặt lên bàn cống nạp
+
+
+def test_run_id_read_from_campaign():
+    import json as _json
+    from forgetax_overlay.save_reader import parse_run_save as _parse
+    text = _json.dumps({"version": 1, "checksum": "",
+                        "payload": _json.dumps({"campaign": {"anonymousRunId": "r1"}})})
+
+    assert _parse(text).run_id == "r1"

@@ -134,6 +134,7 @@ class RunState:
     delivered: int = 0  # giá trị kiếm đã cống nạp trong vòng hiện tại
     merchant_offers: tuple[MerchantOffer, ...] = ()
     merchant_round: int = 0  # vòng thương nhân đang ghé (== round -> đang có mặt)
+    run_id: str = ""  # campaign.anonymousRunId (định danh lượt chơi)
 
 
 def find_run_save(save_dir: Path = DEFAULT_SAVE_DIR) -> Path | None:
@@ -254,4 +255,5 @@ def _build_state(payload: dict[str, Any]) -> RunState:
             for o in _list(camp, "merchantOffers") if o.get("id")
         ),
         merchant_round=_int(camp, "merchantRound"),
+        run_id=str(camp.get("anonymousRunId") or ""),
     )
