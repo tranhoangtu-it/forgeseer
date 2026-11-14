@@ -22,11 +22,13 @@ OddsMap = dict[int, tuple[SwordOdds, SwordOdds]]
 MAX_GROUPS_SHOWN = 8
 
 
-def tribute_lines(state: RunState, quota: float) -> list[Line]:
+def tribute_lines(state: RunState, quota: float, next_quota: float = 0.0) -> list[Line]:
     status = tribute_status(state, quota)
     if status is None:
         return []
-    head = f"Cống: cần {status.quota:,.0f} | đã nộp {status.delivered:,.0f} | kiếm {status.holdings:,.0f}"
+    tomorrow = f" | ngày mai {next_quota:,.0f}" if next_quota > 0 else ""
+    head = (f"Cống: cần {status.quota:,.0f}{tomorrow} | đã nộp {status.delivered:,.0f} | "
+            f"kiếm {status.holdings:,.0f}")
     if status.need <= 0:
         return [(head + " -> ĐÃ ĐỦ", GOOD)]
     if status.shortfall > 0:

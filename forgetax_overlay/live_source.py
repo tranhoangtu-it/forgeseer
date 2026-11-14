@@ -41,6 +41,7 @@ class LiveSource:
         self._odds: OddsMap = {}
         self._shop_sim = ShopSimulation()
         self._quota = 0.0
+        self._next_quota = 0.0
         self._grade_odds = GradeOddsTable()
         self._multiplier = DEFAULT_MULTIPLIER
         self._session: Any = None
@@ -64,6 +65,11 @@ class LiveSource:
         """Cống phẩm phải nộp của vòng hiện tại (0 nếu chưa biết)."""
         with self._lock:
             return self._quota
+
+    def next_quota(self) -> float:
+        """Cống ngày mai do hàm của game tính trên campaign giả lập (0 nếu chưa xác minh được)."""
+        with self._lock:
+            return self._next_quota
 
     def grade_odds(self) -> GradeOddsTable:
         with self._lock:
@@ -124,6 +130,8 @@ class LiveSource:
             quota = payload.get("quota")
             if isinstance(quota, (int, float)):
                 self._quota = float(quota)
+            next_quota = payload.get("nextQuota")
+            self._next_quota = float(next_quota) if isinstance(next_quota, (int, float)) else 0.0
             if isinstance(multiplier, (int, float)) and multiplier > 1:
                 self._multiplier = float(multiplier)
 

@@ -66,11 +66,22 @@ def _strike_steps(live: list[Sword], verdicts: dict, state: RunState, top: Sword
     return steps
 
 
+def _tomorrow_line(next_quota: float, left: float) -> Line:
+    """Cống ngày mai so với giá trị kiếm còn giữ lại: còn phải rèn tăng bao nhiêu lần."""
+    head = f"Ngày mai cống {next_quota:,.0f}: sau khi nộp còn {left:,.0f}"
+    if left >= next_quota:
+        return head + " (đủ)", DIM
+    if left <= 0:
+        return head + " -> cần kiếm mới / rèn thêm", WARN
+    return head + f" -> cần tăng x{next_quota / left:.1f}", WARN
+
+
 def build_steps(state: RunState | None, odds: OddsMap, multiplier: float, quota: float = 0.0,
                 table: GradeOddsTable | None = None, shop_sim: ShopSimulation | None = None,
                 names: dict[str, str] | None = None,
                 merchant: list[MerchantItem] | None = None,
-                fever_strikes: int = DEFAULT_FEVER_STRIKES) -> list[Line]:
+                fever_strikes: int = DEFAULT_FEVER_STRIKES,
+                next_quota: float = 0.0) -> list[Line]:
     lines: list[Line] = [("Việc cần làm", TITLE)]
     if state is None:
         return lines + [("Chưa có dữ liệu lượt chơi.", DIM)]
@@ -87,9 +98,11 @@ def build_steps(state: RunState | None, odds: OddsMap, multiplier: float, quota:
                           f"không gãy) <<<", ALERT))
 
     reserved: set[int] = set()
+    left_after: float | None = None  # giá trị kiếm còn lại sau khi nộp cống hôm nay
     if status is not None:  # 2. Cống nạp
         if status.need <= 0:
             lines.append(("Cống hôm nay: đã đủ", DIM))
+            left_after = status.holdings
         elif status.shortfall > 0:
             lines.append((f"Thiếu {status.shortfall:,.0f} cống: đập kiếm để tăng giá trị", WARN))
         else:
@@ -99,9 +112,12 @@ def build_steps(state: RunState | None, odds: OddsMap, multiplier: float, quota:
                 reserved = {s.serial for s in chosen}
                 ids = ", ".join(s.tag for s in chosen)
                 total = sum(s.value for s in chosen)
+                left_after = status.holdings - total
                 lines.append((f"Cuối ngày nộp cống: {ids} (= {total:,} / cần {status.need:,.0f}) "
                               f"- giữ, đừng đập liều", GOOD))
 
+    if next_quota > 0 and left_after is not None:
+        lines.append(_tomorrow_line(next_quota, left_after))
     lines += _strike_steps(live, verdicts, state, top, reserved)  # 3. Đập kiếm
     if top is not None and state.rewind_charges > 0 and odds[top.serial][0].destruction > 0:
         lines.append((f"Nếu {top.tag} gãy: bấm R (Dây Cót) để hồi", DIM))

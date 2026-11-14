@@ -118,9 +118,20 @@ def test_run_message_with_quota_and_grade_odds():
     live.handle_message(message)
 
     assert live.quota() == 2100.0
+    assert live.next_quota() == 0.0
     table = live.grade_odds()
     assert table.valid and table.normal[0].success == 0.6 and table.fever[0].success == 0.62
 
 
 def test_no_state_before_any_message():
     assert LiveSource().latest() == (None, None)
+
+
+def test_run_message_with_next_quota():
+    live = LiveSource(clock=lambda: 1.0)
+    message = _run_message({"campaign": {}, "swords": []})
+    message["payload"]["nextQuota"] = 3350.0
+
+    live.handle_message(message)
+
+    assert live.next_quota() == 3350.0

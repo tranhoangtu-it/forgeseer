@@ -120,3 +120,21 @@ def test_break_reducing_relic_suggested_when_no_ev_gain_now():
     text = _text(build_steps(state, {1: (SAFE, SAFE)}, 1.5, shop_sim=sim, names={"pin": "Kim Ghim"}))
 
     assert "Cân nhắc relic Kim Ghim" in text and "@+12 gãy 40%->30%" in text
+
+
+def test_tomorrow_quota_compared_with_value_left_after_tribute():
+    swords = (_sword(1, 5000, 10), _sword(2, 320, 0), _sword(3, 320, 0))
+    odds = {1: (RISKY, SAFE), 2: (SAFE, SAFE), 3: (SAFE, SAFE)}
+
+    text = _text(build_steps(_state(swords), odds, 1.5, quota=3000, next_quota=4350))
+
+    assert "Ngày mai cống 4,350: sau khi nộp còn 640 -> cần tăng x6.8" in text
+
+
+def test_tomorrow_quota_already_covered():
+    swords = (_sword(1, 5000, 10), _sword(2, 9000, 12))
+    odds = {1: (RISKY, SAFE), 2: (RISKY, SAFE)}
+
+    text = _text(build_steps(_state(swords), odds, 1.5, quota=3000, next_quota=4350))
+
+    assert "Ngày mai cống 4,350: sau khi nộp còn 9,000 (đủ)" in text

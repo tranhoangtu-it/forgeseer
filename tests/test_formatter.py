@@ -158,3 +158,9 @@ def test_none_state_shows_waiting_message():
     text = _texts(format_state(None))
 
     assert "Chưa có" in text
+
+
+def test_tribute_line_shows_tomorrow_quota():
+    text = _texts(format_state(_state(), quota=800, next_quota=4350))
+
+    assert "ngày mai 4,350" in text
