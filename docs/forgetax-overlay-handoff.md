@@ -18,7 +18,11 @@ Khởi động lại sau khi sửa: dừng tiến trình `pythonw` đang chạy 
 | `live_capture.js` | Script Frida chạy trong game (hook `GPT6ForgeRoom.Update`, main thread) gửi JSON trạng thái + tỉ lệ + mô phỏng. |
 | `live_source.py` | Luồng nền gắn Frida vào `ForgeTax.exe`, nhận message, cache tên relic. |
 | `advisor.py` | `SwordOdds`, EV 1 nhát, `ShopSimulation`, `GradeOddsTable`. |
-| `planner.py` | DP dừng tối ưu theo (grade, tích lực), có đợt Xuất Thần. |
+| `planner.py` | DP dừng tối ưu theo (grade, tích lực), có đợt Xuất Thần (`fever_strikes` nhát). |
+| `fever_calibration.py` | Đo số nhát/đợt Xuất Thần của người chơi, trung bình lưu ở config.json khóa `fever` (mặc định 7). |
+| `reroll_advice.py` | Gợi ý đổi lượt máy relic (miễn phí / vàng dư ≥10× giá). |
+| `run_log.py` | Ghi `%APPDATA%\ForgeTaxOverlay\runs.jsonl` khi lượt kết thúc (dedupe theo anonymousRunId) + dòng tóm tắt. |
+| `config.py` | config.json dùng chung (vị trí `x/y`, `fever`); ghi = gộp khóa. |
 | `tribute.py` | Tình trạng cống, gợi ý ưu tiên đủ cống. |
 | `sword_section.py` | Hiển thị kiếm + `sword_verdict` (thứ tự ưu tiên: Xuất Thần > cống > kế hoạch > EV). |
 | `shop_advice.py` | Gợi ý mua/bỏ/đổi relic (mô phỏng). |
@@ -44,13 +48,36 @@ Khởi động lại sau khi sửa: dừng tiến trình `pythonw` đang chạy 
 - Bảng ngôn ngữ: field tĩnh `Dictionary<lang, Dictionary<key,text>>` của `ForgeLocalization`; có `vi` (902 mục).
   Relic: `item.<id>.name/.description`. Duyệt Dictionary: mảng entries (Entry 24 byte: hash,next,key@8,value@16).
 - Vị trí kiếm (`place`): 0 sàn, 3 trên đe, 4 giá (ô = `rack`+1), 5 bàn cống nạp (đã nộp → không tính là còn trong tay).
-  Các mã khác (trên tay / trong lò) chưa phân biệt.
+  Các mã khác (trên tay / trong lò) chưa phân biệt. Quan sát 4 phút: mã 1 (thường kèm con trỏ ở field
+  `GPT6ForgeRoom.$oc`, khả năng là đang cầm) và mã 2 (ngắn, ~1 giây); chưa thấy `heated=true` nên chưa
+  xác minh lò/tay -> overlay vẫn hiện "đang cầm" cho mã khác 0/3/4/5. `place` không phải field của
+  GPT6Sword (chỉ có trong ForgeSavedSword khi chụp).
 - Thương nhân ma: `campaign.merchantOffers[{id, price, sold, grade, stock, purchases}]`, có mặt khi
   `merchantRound == round`. id đã gặp: `sword`, `worldtree`, `ward` (Vảy Rồng Nứt), `rewind` (Dây Cót Hối Tiếc).
+- Khế ước 24 ngày (`contractDeadlineRound`=24). `campaign.anonymousRunId` = định danh lượt (chuỗi hex 32 ký tự).
+- Cống nạp: `ForgeCampaign.$gf()` = cống gốc theo `round`, `$Gf()` = cống thực phải nộp (đã trừ
+  `tributeCredit`, Khế Ước Trọn Đời −30%; `contractInk` KHÔNG làm đổi). Đã kiểm: `$Gf` của campaign giả lập
+  hôm nay == `GPT6ForgeRoom.quota`. Đường cống (balanceRevision 2): N1 1800, N2 2100, N3 2600, N4 3350,
+  N5 4350, N6 5700, N7 8700, N8 13200, N9 20100, N10 29500, N12 65500, N14 140000, N16 290000, N18 534000,
+  N20 824000, N22 1280000, N24 2000000 (khác số liệu cộng đồng cũ). `$ef()` = 0.15 × cống = giá đổi lượt
+  máy relic (N7: 1,305 G khớp chữ trên máy), `$pf()` = 1.5×, `$Pf()` = 2×. `nextTributeCredit` = giảm cho
+  lần cống sau (thông báo `notice.quota_credit`). Overlay gọi `$Gf` trên campaign giả lập round+1,
+  tributeCredit = nextTributeCredit.
+- `ForgeEnhancementBalance`: baseValue@24=320, gradeMultiplier@32=1.5, maxGrade@36=299, openingQuota@40=1800.
+- Máy relic `GPT6ForgeRoom.vending` (ForgeRelicVending): TextMesh `rerollText` hiện "1,305 G" hoặc
+  "1 LẦN MIỄN PHÍ" (`rework.free_reroll`); đọc bằng `TextMesh.get_text`. Campaign có `rerolls`,
+  `paidRerolls`, `freeRerollUsedRound`.
+- `GPT6ForgeRoom.ledgerText` (TextMesh) = "CỐNG PHẨM PHẢI NỘP\n2,600 G\n\nĐÃ CỐNG NẠP\n0 G".
+- Xuất Thần (đo trực tiếp 2 lần): nhát thường thứ 10 kích hoạt, `feverRemaining` bắt đầu ~4.0 giây và giảm
+  dần; trong 4 giây người chơi đập được 6 nhát (11..16). Overlay không tính nhát kích hoạt.
+- Bàn Thờ Hai Mặt (`altar`): campaign có `forcedResultSerial`, `forcedNextResult` (=-1 khi không ấn định).
+  `ForgeCampaign.$UE(id, GPT6Sword, balance, bool)` trả mô tả động của relic nhưng với kiếm null trả
+  "Chưa thể dùng lúc này." -> chưa xác định được mặt hôm nay.
 
 ## Giả định chưa xác minh chắc
-- Xuất Thần: 10 nhát thường thì nhát kế vào Xuất Thần, kéo dài ~4 giây. Planner giả định `FEVER_STRIKES=4`;
-  hướng dẫn cộng đồng (grindnstrat.com) nói ~7 nhát khi đập hết tốc.
+- Planner coi một đợt Xuất Thần = `fever_strikes` nhát tỉ lệ Xuất Thần ngay sau 10 nhát thường
+  (số nhát hiệu chỉnh theo người chơi; mặc định 7 theo hướng dẫn cộng đồng khi chưa có mẫu).
+- Gợi ý đổi lượt: ngưỡng "vàng dư" = ví ≥ 10 × giá (heuristic, vàng còn dùng cho Thương nhân ma).
 - Hư tổn = -1 grade, Xuất sắc = +2, giá trị mỗi grade × gradeMultiplier.
 - Theo hướng dẫn cộng đồng: lỡ cống lần 3 là thua; kiếm nộp cống đổi lại thành vàng; máy relic tính 1 credit/kiếm
   (trả bằng kiếm +0); Royal Change: 30% phần nộp dư trừ vào cống lần sau (tối đa -30%).
@@ -58,3 +85,4 @@ Khởi động lại sau khi sửa: dừng tiến trình `pythonw` đang chạy 
 ## Lưu ý môi trường
 - Hook "Fact-Forcing Gate" chặn lần ghi/sửa đầu mỗi file: trình bày thông tin (ai gọi file, dữ liệu, yêu cầu) rồi thử lại.
 - Dò game bằng script Frida tạm (đặt ngoài repo); chỉ gọi hàm thuần/getter trên main thread (trong hook `Update`).
+  Hàm campaign chưa chắc thuần thì gọi trên campaign GIẢ LẬP (`JsonUtility.FromJson`), không gọi trên campaign thật.
