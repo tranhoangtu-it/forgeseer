@@ -1,0 +1,12 @@
+[project]
+name = "forgetax-overlay"
+version = "0.1.0"
+description = "Overlay hiển thị trạng thái lượt chơi ForgeTax, đọc từ file save (chỉ đọc)."
+requires-python = ">=3.10"
+
+[project.optional-dependencies]
+live = ["frida>=17"]  # đọc trực tiếp từ game đang chạy
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
