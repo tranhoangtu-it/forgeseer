@@ -41,6 +41,16 @@ def test_strikes_to_fever_counts_down():
     assert plan.strikes_to_fever == FEVER_THRESHOLD - 7
 
 
+def test_more_fever_strikes_raise_expected_value_when_fever_ready():
+    args = dict(grade=10, charge=FEVER_THRESHOLD, normal=_table(DEADLY), fever=_table(FEVER),
+                multiplier=1.5)
+
+    short = plan_sword(**args, fever_strikes=2)
+    long = plan_sword(**args, fever_strikes=8)
+
+    assert long.ratio > short.ratio
+
+
 def test_missing_grade_returns_none():
     assert plan_sword(grade=50, charge=0, normal=_table(SAFE), fever=_table(FEVER),
                       multiplier=1.5) is None

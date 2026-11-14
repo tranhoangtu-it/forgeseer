@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 from .action_plan import MERCHANT_SWORD_NAMES
 from .advisor import GradeOddsTable, ShopSimulation, SwordOdds
+from .fever_calibration import DEFAULT_FEVER_STRIKES
 from .merchant_advice import MerchantItem
 from .relic_names import display_name
 from .save_reader import RunState, Sword
@@ -26,7 +27,8 @@ def format_state(state: RunState | None, names: dict[str, str] | None = None,
                  shop_sim: ShopSimulation | None = None,
                  quota: float = 0.0,
                  grade_odds: GradeOddsTable | None = None,
-                 merchant: list[MerchantItem] | None = None) -> list[Line]:
+                 merchant: list[MerchantItem] | None = None,
+                 fever_strikes: int = DEFAULT_FEVER_STRIKES) -> list[Line]:
     """``names``: id relic -> tên; ``odds``/``shop_sim``/``quota``/``grade_odds``: chỉ có khi LIVE."""
     if state is None:
         return [("ForgeTax", TITLE), ("Chưa có lượt chơi nào được lưu.", DIM)]
@@ -35,7 +37,7 @@ def format_state(state: RunState | None, names: dict[str, str] | None = None,
     lines: list[Line] = [("ForgeTax", TITLE)]
     lines += _campaign_lines(state)
     lines += tribute_lines(state, quota)
-    lines += sword_lines(state, odds, multiplier, quota, grade_odds)
+    lines += sword_lines(state, odds, multiplier, quota, grade_odds, fever_strikes)
     ctx = _AdviceContext(target_sword(state.swords, odds), odds,
                          shop_sim or ShopSimulation(), multiplier, names)
     lines += _relic_lines(state, names, ctx)
@@ -43,7 +45,7 @@ def format_state(state: RunState | None, names: dict[str, str] | None = None,
         lines += _shop_lines(state, names, descriptions or {}, ctx)
     if merchant:
         lines += _merchant_lines(merchant, names)
-    lines += _stats_lines(state)
+    lines += _stats_lines(state, fever_strikes)
     return lines
 
 
@@ -132,10 +134,10 @@ def _shop_lines(s: RunState, names: dict[str, str], descriptions: dict[str, str]
     return lines
 
 
-def _stats_lines(s: RunState) -> list[Line]:
+def _stats_lines(s: RunState, fever_strikes: int) -> list[Line]:
     minutes, seconds = divmod(int(s.play_seconds), 60)
     return [
         (f"Great {s.great_events} | Hold {s.hold_events} | Damage {s.damage_events} | "
          f"Fever {s.fever_events} | Gãy {s.broken_swords} | Tổng vàng {s.gold_earned:,} | "
-         f"G max {s.highest_grade} | {minutes}:{seconds:02d}", DIM),
+         f"G max {s.highest_grade} | {minutes}:{seconds:02d} | XT ~{fever_strikes} nhát", DIM),
     ]

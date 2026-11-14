@@ -6,6 +6,7 @@ Thứ tự ưu tiên: Xuất Thần -> nộp cống -> đập kiếm (kèm Vảy
 from __future__ import annotations
 
 from .advisor import GradeOddsTable, ShopSimulation, SwordOdds
+from .fever_calibration import DEFAULT_FEVER_STRIKES
 from .merchant_advice import MerchantItem
 from .relic_names import display_name
 from .save_reader import RunState, Sword
@@ -14,6 +15,7 @@ from .sword_section import sword_verdict
 from .tribute import tribute_status
 
 TITLE, NORMAL, GOOD, WARN, DIM = "title", "normal", "good", "warn", "dim"
+ALERT = "alert"  # chữ to, nền đỏ: việc phải làm NGAY
 Line = tuple[str, str]
 OddsMap = dict[int, tuple[SwordOdds, SwordOdds]]
 MERCHANT_SWORD_NAMES = {"sword": "Kiếm Sắt"}
@@ -67,7 +69,8 @@ def _strike_steps(live: list[Sword], verdicts: dict, state: RunState, top: Sword
 def build_steps(state: RunState | None, odds: OddsMap, multiplier: float, quota: float = 0.0,
                 table: GradeOddsTable | None = None, shop_sim: ShopSimulation | None = None,
                 names: dict[str, str] | None = None,
-                merchant: list[MerchantItem] | None = None) -> list[Line]:
+                merchant: list[MerchantItem] | None = None,
+                fever_strikes: int = DEFAULT_FEVER_STRIKES) -> list[Line]:
     lines: list[Line] = [("Việc cần làm", TITLE)]
     if state is None:
         return lines + [("Chưa có dữ liệu lượt chơi.", DIM)]
@@ -75,12 +78,13 @@ def build_steps(state: RunState | None, odds: OddsMap, multiplier: float, quota:
     live = sorted((s for s in state.swords if s.is_live), key=lambda s: s.value, reverse=True)
     status = tribute_status(state, quota)
     verdicts = {s.serial: v for s in live
-                if (v := sword_verdict(s, odds, multiplier, status, table)) is not None}
+                if (v := sword_verdict(s, odds, multiplier, status, table, fever_strikes)) is not None}
     top = target_sword(state.swords, odds)
 
     for sw in live:  # 1. Xuất Thần: tận dụng ngay, không thể gãy
         if sw.fever_remaining > 0:
-            lines.append((f"XUẤT THẦN {sw.tag}: đập liên tục thật nhanh!", WARN))
+            lines.append((f">>> XUẤT THẦN {sw.tag}: ĐẬP LIÊN TỤC! (~{fever_strikes} nhát, "
+                          f"không gãy) <<<", ALERT))
 
     reserved: set[int] = set()
     if status is not None:  # 2. Cống nạp

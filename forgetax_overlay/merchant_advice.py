@@ -12,6 +12,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from .advisor import GradeOddsTable, SwordOdds
+from .fever_calibration import DEFAULT_FEVER_STRIKES
 from .planner import plan_sword
 from .save_reader import MerchantOffer, RunState
 from .shop_advice import target_sword
@@ -42,11 +43,11 @@ def merchant_active(state: RunState) -> bool:
 
 
 def _worth(offer: MerchantOffer, state: RunState, odds: OddsMap, multiplier: float,
-           table: GradeOddsTable | None) -> tuple[float | None, str]:
+           table: GradeOddsTable | None, fever_strikes: int) -> tuple[float | None, str]:
     top = target_sword(state.swords, odds)
     if offer.id in SWORD_IDS:
         base = BASE_SWORD_VALUE * multiplier ** offer.grade
-        plan = (plan_sword(offer.grade, 0, table.normal, table.fever, multiplier)
+        plan = (plan_sword(offer.grade, 0, table.normal, table.fever, multiplier, fever_strikes)
                 if table is not None and table.valid else None)
         if plan is None:
             return base, f"giá trị gốc {base:,.0f}"
@@ -73,12 +74,13 @@ def _verdict(worth: float | None, price: float, wallet: int) -> str:
 
 
 def evaluate_merchant(state: RunState, odds: OddsMap, multiplier: float,
-                      table: GradeOddsTable | None) -> list[MerchantItem]:
+                      table: GradeOddsTable | None,
+                      fever_strikes: int = DEFAULT_FEVER_STRIKES) -> list[MerchantItem]:
     items = []
     for offer in state.merchant_offers:
         if offer.sold:
             continue
-        worth, note = _worth(offer, state, odds, multiplier, table)
+        worth, note = _worth(offer, state, odds, multiplier, table, fever_strikes)
         items.append(MerchantItem(offer, worth, note, _verdict(worth, offer.price, state.wallet)))
     buyable = [i for i in items if i.verdict == "MUA" and i.ratio is not None]
     if buyable:

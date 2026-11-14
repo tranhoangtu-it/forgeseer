@@ -11,6 +11,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from .advisor import Advice, GradeOddsTable, SwordOdds, advise
+from .fever_calibration import DEFAULT_FEVER_STRIKES
 from .planner import FEVER_THRESHOLD, Plan, plan_sword
 from .save_reader import RunState, Sword
 from .tribute import TributeStatus, tribute_override, tribute_status
@@ -65,7 +66,8 @@ class SwordVerdict:
 
 
 def sword_verdict(sw: Sword, odds: OddsMap, multiplier: float, status: TributeStatus | None,
-                  table: GradeOddsTable | None) -> SwordVerdict | None:
+                  table: GradeOddsTable | None,
+                  fever_strikes: int = DEFAULT_FEVER_STRIKES) -> SwordVerdict | None:
     """Gợi ý cuối cùng cho một kiếm theo thứ tự ưu tiên ở đầu module."""
     pair = odds.get(sw.serial)
     if pair is None:
@@ -75,7 +77,8 @@ def sword_verdict(sw: Sword, odds: OddsMap, multiplier: float, status: TributeSt
     one_step = advise(o, multiplier)
     plan = None
     if not in_fever and table is not None and table.valid:
-        plan = plan_sword(sw.grade, sw.charge, table.normal, table.fever, multiplier)
+        plan = plan_sword(sw.grade, sw.charge, table.normal, table.fever, multiplier,
+                          fever_strikes)
     verdict = None if in_fever else tribute_override(sw, o, status, multiplier)
     if verdict is None and plan is not None:
         verdict = plan.verdict
@@ -85,8 +88,8 @@ def sword_verdict(sw: Sword, odds: OddsMap, multiplier: float, status: TributeSt
 
 
 def _advice_lines(sw: Sword, odds: OddsMap, multiplier: float, status: TributeStatus | None,
-                  table: GradeOddsTable | None) -> list[Line]:
-    v = sword_verdict(sw, odds, multiplier, status, table)
+                  table: GradeOddsTable | None, fever_strikes: int) -> list[Line]:
+    v = sword_verdict(sw, odds, multiplier, status, table, fever_strikes)
     if v is None:
         return []
     o, one_step, plan, verdict = v.odds, v.one_step, v.plan, v.verdict
@@ -102,7 +105,8 @@ def _advice_lines(sw: Sword, odds: OddsMap, multiplier: float, status: TributeSt
 
 
 def sword_lines(state: RunState, odds: OddsMap, multiplier: float, quota: float,
-                table: GradeOddsTable | None) -> list[Line]:
+                table: GradeOddsTable | None,
+                fever_strikes: int = DEFAULT_FEVER_STRIKES) -> list[Line]:
     live = sorted((sw for sw in state.swords if sw.is_live), key=lambda sw: sw.value, reverse=True)
     lines: list[Line] = [(f"Kiếm ({len(live)}):", TITLE)]
     if not live:
@@ -115,7 +119,7 @@ def sword_lines(state: RunState, odds: OddsMap, multiplier: float, quota: float,
         sw = members[0]
         charge = f" | tích lực {sw.charge}/{FEVER_THRESHOLD}" if sw.charge and len(members) == 1 else ""
         lines.append(("  " + _label(sw, len(members)) + charge, GOOD if sw.heated else NORMAL))
-        lines += _advice_lines(sw, odds, multiplier, status, table)
+        lines += _advice_lines(sw, odds, multiplier, status, table, fever_strikes)
     hidden = sum(len(m) for m in list(groups.values())[MAX_GROUPS_SHOWN:])
     if hidden:
         lines.append((f"  ... +{hidden} thanh nữa", DIM))

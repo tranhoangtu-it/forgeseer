@@ -13,7 +13,8 @@ from pathlib import Path
 
 from .config import DEFAULT_CONFIG_FILE, save_position
 from .formatter import DIM, GOOD, NORMAL, TITLE, WARN, format_state
-from .action_plan import build_steps
+from .action_plan import ALERT, build_steps
+from .fever_calibration import FeverTracker, load_fever_stats, observe, save_fever_stats
 from .live_source import LiveSource
 from .merchant_advice import evaluate_merchant, merchant_active
 from .relic_names import load_relic_texts
@@ -22,6 +23,8 @@ from .save_reader import RunState, SaveReadError, find_run_save, load_run_state
 BG = "#101014"
 COLORS = {TITLE: "#f0c060", NORMAL: "#e8e8e8", GOOD: "#7ee08a", WARN: "#ff6b5b", DIM: "#9a9aa8"}
 FONT = ("Consolas", 10)
+ALERT_FONT = ("Consolas", 14, "bold")
+ALERT_BG = "#b01818"
 ALPHA = 0.85
 HOTKEY_POLL_MS = 80
 PANEL_MARGIN = 20  # khoảng cách khung "Việc cần làm" tới mép phải/trên màn hình (px)
@@ -55,6 +58,7 @@ def _make_text(parent: tk.Misc) -> tk.Text:
     for tag, color in COLORS.items():
         text.tag_configure(tag, foreground=color)
     text.tag_configure(TITLE, foreground=COLORS[TITLE], font=FONT + ("bold",))
+    text.tag_configure(ALERT, foreground="#ffffff", background=ALERT_BG, font=ALERT_FONT)
     text.pack()
     return text
 
@@ -90,6 +94,8 @@ class Overlay:
         self.names = names or {}
         self.texts = load_relic_texts()  # cache tên chính thức từ lần kết nối trước
         self.config_file = config_file
+        self._fever_tracker = FeverTracker()
+        self._fever_stats = load_fever_stats(config_file)
         self.state: RunState | None = None
         self.status = "Đang tìm file save..."
         self._last_sig: tuple[str, int] | None = None
@@ -187,9 +193,18 @@ class Overlay:
         if state is not getattr(self, "_last_live_state", None):
             self._last_live_state = state
             self.state = state
+            self._track_fever(state)
             self._last_sig = None  # khi mất live, buộc đọc lại file
             self._set_status(f"LIVE {time.strftime('%H:%M:%S')}")
         return True
+
+    def _track_fever(self, state: RunState) -> None:
+        """Hiệu chỉnh số nhát mỗi đợt Xuất Thần từ dữ liệu trực tiếp (bản chụp ~300ms)."""
+        self._fever_tracker, counts = observe(self._fever_tracker, state.swords)
+        if counts:
+            for count in counts:
+                self._fever_stats = self._fever_stats.add(count)
+            save_fever_stats(self.config_file, self._fever_stats)
 
     def _refresh_from_file(self) -> None:
         path = find_run_save(self.save_dir)
@@ -229,14 +244,16 @@ class Overlay:
                 grade_odds = self.live.grade_odds()
         names = {**self.names, **{k: t.name for k, t in texts.items()}}
         descriptions = {k: t.description for k, t in texts.items()}
-        merchant = (evaluate_merchant(self.state, odds, multiplier, grade_odds)
+        fever_strikes = self._fever_stats.strikes
+        merchant = (evaluate_merchant(self.state, odds, multiplier, grade_odds, fever_strikes)
                     if self.state is not None and merchant_active(self.state) else [])
         lines = format_state(self.state, names, odds, multiplier, descriptions, shop_sim,
-                             quota, grade_odds, merchant)
+                             quota, grade_odds, merchant, fever_strikes)
         hint = "F9: khóa vị trí" if self._drag_mode else "F8 ẩn | F9 di chuyển | F10 thoát"
         lines = lines + [(self.status, DIM), (hint, WARN if self._drag_mode else DIM)]
         _fill_text(self.text, lines)
-        steps = build_steps(self.state, odds, multiplier, quota, grade_odds, shop_sim, names, merchant)
+        steps = build_steps(self.state, odds, multiplier, quota, grade_odds, shop_sim, names, merchant,
+                            fever_strikes)
         _fill_text(self.panel_text, steps)
         self.panel.update_idletasks()  # đặt khung "Việc cần làm" sát mép phải màn hình
         x = self.panel.winfo_screenwidth() - self.panel.winfo_reqwidth() - PANEL_MARGIN

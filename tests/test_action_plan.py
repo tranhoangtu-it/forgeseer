@@ -34,6 +34,15 @@ def test_fever_sword_is_first_step():
     assert "XUẤT THẦN +3 dưới sàn" in lines[1][0]
 
 
+def test_fever_step_is_alert_and_shows_calibrated_strikes():
+    swords = (_sword(2, 900, 3, fever=2.0),)
+    lines = build_steps(_state(swords), {2: (RISKY, SAFE)}, 1.5, fever_strikes=9)
+
+    text, tag = lines[1]
+    assert tag == "alert"
+    assert "~9 nhát" in text
+
+
 def test_tribute_step_prefers_finished_swords_and_reaches_need():
     swords = (_sword(1, 5000, 10), _sword(2, 320, 0), _sword(3, 320, 0))
     odds = {1: (RISKY, SAFE), 2: (SAFE, SAFE), 3: (SAFE, SAFE)}

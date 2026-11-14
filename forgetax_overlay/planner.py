@@ -2,11 +2,12 @@
 
 Trạng thái: (grade, tích lực Xuất Thần, số nhát còn xét). Mỗi nhát thường: dùng tỉ lệ của
 game ở grade đó, tích lực +1. Khi tích lực đạt ngưỡng, nhát kế tiếp vào Xuất Thần: một đợt
-FEVER_STRIKES nhát dùng tỉ lệ Xuất Thần (không gãy), sau đó tích lực về 0.
+``fever_strikes`` nhát dùng tỉ lệ Xuất Thần (không gãy), sau đó tích lực về 0.
 
 Giả định (ghi rõ vì chưa xác minh tuyệt đối):
 - Ngưỡng 10 nhát lấy từ hướng dẫn trong game ("Rèn đủ mười nhát...").
-- Xuất Thần tính theo thời gian; FEVER_STRIKES = số nhát trung bình người chơi đập kịp.
+- Xuất Thần tính theo thời gian; ``fever_strikes`` = số nhát trung bình người chơi đập kịp
+  (hiệu chỉnh từ chính người chơi, xem fever_calibration).
 - Thành công +1 grade, Xuất sắc +2, Không đổi giữ nguyên, Hư tổn -1, Gãy mất trắng;
   giá trị mỗi grade x multiplier. Relic cộng thêm tích lực/giá trị chưa được tính.
 """
@@ -16,9 +17,9 @@ from dataclasses import dataclass
 from functools import lru_cache
 
 from .advisor import SwordOdds
+from .fever_calibration import DEFAULT_FEVER_STRIKES
 
 FEVER_THRESHOLD = 10
-FEVER_STRIKES = 4
 HORIZON = 30          # số nhát (tính cả đợt Xuất Thần là 1 bước) tối đa được xét
 EPSILON = 1e-9
 
@@ -38,7 +39,8 @@ def _transitions(o: SwordOdds, g: int) -> list[tuple[float, int]]:
 
 
 def plan_sword(grade: int, charge: int, normal: GradeOdds, fever: GradeOdds,
-               multiplier: float, horizon: int = HORIZON) -> Plan | None:
+               multiplier: float, fever_strikes: int = DEFAULT_FEVER_STRIKES,
+               horizon: int = HORIZON) -> Plan | None:
     if grade not in normal:
         return None
 
@@ -47,7 +49,7 @@ def plan_sword(grade: int, charge: int, normal: GradeOdds, fever: GradeOdds,
 
     def fever_burst(g: int) -> dict[int, float]:
         dist = {g: 1.0}
-        for _ in range(FEVER_STRIKES):
+        for _ in range(max(fever_strikes, 1)):
             nxt: dict[int, float] = {}
             for gg, p in dist.items():
                 o = fever.get(gg)
