@@ -34,6 +34,13 @@ The overlay uses the same language as the game. Supported: English, 한국어, �
 繁體中文, Deutsch, Español, Português (Brasil), Русский, Tiếng Việt. Game terms (outcome names,
 Frenzy, relics, tribute...) use the game's own translations where they exist.
 
+The settings window (F6) has two more tabs. Simulation plays the rest of your current run a couple
+of thousand times with the game's odds and shows how likely you are to still be alive each day
+with a few ways of playing: following the overlay, careful, bold, safe strikes only. Stats sums up
+the runs you've finished: how far you got, where the lost ones ended, your best grade over time.
+It also tells you when a new version is out (one quick check on GitHub at start-up, you can turn
+it off).
+
 ## Install
 
 1. Grab `ForgeSeer-<version>-windows.zip` from [Releases](https://github.com/tranhoangtu-it/forgeseer/releases/latest) and unzip it.

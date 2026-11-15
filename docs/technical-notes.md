@@ -102,6 +102,10 @@ I tested), so treat it as best effort; `--lang` always works.
 | `legend.py` | F7 legend. |
 | `overlay.py` | The three overlay panels (details, to-do, legend), polling, hotkeys, live settings changes (opacity, font, panels, language, starting/stopping `LiveSource`). |
 | `overlay_windows.py` | Win32 bits: borderless topmost click-through Toplevels (WS_EX_TRANSPARENT), each with its own fonts (fitting can shrink one panel without the others), the monitor work area, font metrics, two-column fill. |
+| `simulator/` | Monte Carlo of the rest of the run (see below). `model.py` inputs and fallbacks, `strategies.py` the decision rules, `engine.py` the loop. Pure, no Tk. |
+| `sim_tab.py` / `stats_tab.py` / `charts.py` | Simulation and Stats tabs of the settings window, drawn on a plain Tk canvas. |
+| `stats.py` | Numbers for the Stats tab from `runs.jsonl` and `days.jsonl` (`day_log.load_days`). |
+| `update_check.py` | One background GET to the GitHub "latest release" API at start-up (3 s timeout, failures silent); compared with `forgeseer.__version__`. Setting `check_updates`. |
 | `relic_names.py/.json` | Fallback relic names (my own Vietnamese translations of the ids); official names come from the game and are cached in `%APPDATA%\ForgeTaxOverlay\relic_texts.json` for every language. |
 
 ## What I know about the game
@@ -196,6 +200,33 @@ are intact.
 - From community guides: missing the tribute a third time ends the run; offered swords turn into
   gold; the relic shop charges 1 credit per sword (paid with +0 swords); Royal Change takes 30% of
   the overpayment off the next tribute (up to −30%).
+
+## Simulating the rest of the run
+
+The Simulation tab (`forgeseer/simulator/`) plays the remaining days many times. It starts from
+the latest snapshot the overlay holds (live state, quota, schedule, odds table and multiplier from
+`LiveSource`), or from the newest save when there's no live data. Each simulated day: 3 fresh +0
+swords arrive (not on the current day), every sword is struck while the strategy says so (best
+sword first, at most 30 decisions per sword per day, a Frenzy burst of `fever_strikes` strikes
+counts as one), then the tribute is paid with the smallest sword that covers it alone, else the
+biggest ones until it's covered. Not enough means a missed tribute; the third ends the run.
+Outcomes follow the planner's model (break / −1 / hold / +1 / +2, value × multiplier per grade).
+
+Strategies: `advisor` (planner decision per grade and charge, plus the tribute rules: never risk
+the sword today's tribute rests on, push when one strike can close the gap), `conservative` (same,
+but no normal strike with ≥10 % break), `aggressive` (the best sword keeps going while one strike
+has EV > 1, ignoring the tribute lock), `safe_only` (only strikes that can't break, plus Frenzy).
+The planner's choice doesn't depend on the value scale, so one DP relative to +0 gives the
+decision table for every grade.
+
+What's not from the game: tribute past the live schedule comes from the curve above (19, 21 and
+23 are geometric means of their neighbours); without the live odds table a rough stand-in curve is
+used (`assumed_odds`) and the tab says so; overpay credit, relic shop and merchant are ignored.
+It runs up to 2,000 runs per strategy, interleaved, and stops after about 0.9 s on a worker
+thread; with a seed it's deterministic. It never reads the RNG state.
+
+Settings-window texts live in `locales/<code>.extra.json`, merged over `<code>.json` by
+`i18n.catalog`; the key-set tests cover the merged catalogs.
 
 ## Poking at the game
 

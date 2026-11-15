@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+- Simulation tab in the settings window. It replays the rest of your run 2,000 times (or as many
+  as fit in about a second) with the game's own odds and tribute schedule and compares four ways
+  of playing: follow the overlay, careful (no 10 %+ break risks), bold (keep pushing your best
+  sword), safe strikes only. You get the chance of still being in the run after each day, the
+  average day each one gets to, and which one comes out ahead. Without a live connection it falls
+  back to the save file and rough odds, and says so. It only uses probabilities; the game's RNG is
+  never read.
+- Stats tab: runs played, wins, furthest and average day, which day lost runs ended on, highest
+  grade per run, and when you usually miss your first tribute.
+- New version notice: at start-up ForgeSeer asks GitHub once whether there's a newer release and
+  shows a link at the top of the settings window. Offline or rate limited, it just stays quiet.
+  "Check for a new version at start-up" turns it off.
+
 ## 1.1.1 (2026-11-16)
 
 - The panels now fit on any screen. On 1080p, 1440p or with Windows scaling above 100% the detail
