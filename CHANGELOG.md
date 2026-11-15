@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.1.0 (2026-11-16)
 
 - Settings window at start-up: language (or follow the game), opacity, font size, which panels
   to show, live reading on/off, reset the overlay position, skip it next time. Start sends it to

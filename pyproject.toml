@@ -1,6 +1,6 @@
 [project]
 name = "forgeseer"
-version = "1.0.0"
+version = "1.1.0"
 description = "Read-only strategy overlay for ForgeTax"
 requires-python = ">=3.10"
 
