@@ -16,11 +16,13 @@ from .day_log import DEFAULT_DAY_LOG, DayTracker, append_day, load_day_keys, obs
 from .formatter import DIM, GOOD, NORMAL, TITLE, WARN, format_state
 from .action_plan import ALERT, build_steps
 from .fever_calibration import FeverTracker, load_fever_stats, observe, save_fever_stats
+from .legend import legend_lines
 from .live_source import LiveSource
 from .merchant_advice import evaluate_merchant, merchant_active
 from .relic_names import load_relic_texts
 from .run_log import DEFAULT_RUN_LOG, append_run, load_runs, record_from_state, summary_line
 from .save_reader import RunState, SaveReadError, find_run_save, load_run_state
+from .text_format import SEP
 
 BG = "#101014"
 COLORS = {TITLE: "#f0c060", NORMAL: "#e8e8e8", GOOD: "#7ee08a", WARN: "#ff6b5b", DIM: "#9a9aa8"}
@@ -36,7 +38,11 @@ GWL_EXSTYLE = -20
 WS_EX_LAYERED = 0x00080000
 WS_EX_TRANSPARENT = 0x00000020
 WS_EX_TOOLWINDOW = 0x00000080  # ẩn khỏi taskbar / Alt+Tab
+VK_TOGGLE_LEGEND = 0x76  # F7
 VK_TOGGLE_VISIBLE, VK_TOGGLE_DRAG, VK_QUIT = 0x77, 0x78, 0x79  # F8, F9, F10
+HINT_TEXT = f"F7 chú giải{SEP}F8 ẩn{SEP}F9 di chuyển{SEP}F10 thoát"
+DRAG_HINT_TEXT = "F9: khóa vị trí"
+LIVE_STATUS_PREFIX = "Đọc trực tiếp lúc"
 
 _user32 = ctypes.windll.user32
 _user32.GetWindowLongPtrW.restype = ctypes.c_ssize_t
@@ -106,6 +112,8 @@ class Overlay:
         self._last_sig: tuple[str, int] | None = None
         self._keys_down: set[int] = set()
         self._visible = True
+        self._legend_visible = False
+        self._is_live = False  # True khi đang hiển thị dữ liệu đọc trực tiếp từ game
         self._drag_mode = False
         self._drag_origin = (0, 0)
 
@@ -126,12 +134,25 @@ class Overlay:
         self.panel.configure(bg=BG)
         self.panel_text = _make_text(self.panel)
 
+        # Khung "Chú giải" (F7), ẩn lúc đầu, cũng bấm xuyên qua được.
+        self.legend = tk.Toplevel(root)
+        self.legend.overrideredirect(True)
+        self.legend.attributes("-topmost", True)
+        self.legend.configure(bg=BG)
+        self.legend_text = _make_text(self.legend)
+        _fill_text(self.legend_text, legend_lines())
+
         root.update_idletasks()
         self.panel.update_idletasks()
         self.hwnd = _user32.GetParent(root.winfo_id()) or root.winfo_id()
         self.panel_hwnd = _user32.GetParent(self.panel.winfo_id()) or self.panel.winfo_id()
         self._apply_click_through(True)
         _set_click_through(self.panel_hwnd, self.panel, True)
+        self.legend.update_idletasks()
+        self.legend_hwnd = _user32.GetParent(self.legend.winfo_id()) or self.legend.winfo_id()
+        _set_click_through(self.legend_hwnd, self.legend, True)
+        self._place_legend()
+        self.legend.withdraw()
         self.render()
 
     # ---------- Win32 ----------
@@ -167,6 +188,10 @@ class Overlay:
                     window.deiconify()
                 else:
                     window.withdraw()
+            self._show_legend(self._visible and self._legend_visible)
+        if self._key_pressed_once(VK_TOGGLE_LEGEND):
+            self._legend_visible = not self._legend_visible
+            self._show_legend(self._visible and self._legend_visible)
         if self._key_pressed_once(VK_TOGGLE_DRAG):
             self._drag_mode = not self._drag_mode
             self._apply_click_through(not self._drag_mode)
@@ -174,6 +199,19 @@ class Overlay:
                 self._save_position()
             self.render()
         self.root.after(HOTKEY_POLL_MS, self._poll_hotkeys)
+
+    def _show_legend(self, shown: bool) -> None:
+        if shown:
+            self.legend.deiconify()
+            self._place_legend()
+        else:
+            self.legend.withdraw()
+
+    def _place_legend(self) -> None:
+        """Khung chú giải ở giữa mép trên màn hình."""
+        self.legend.update_idletasks()
+        x = (self.legend.winfo_screenwidth() - self.legend.winfo_reqwidth()) // 2
+        self.legend.geometry(f"+{max(x, 0)}+{PANEL_MARGIN}")
 
     def _save_position(self) -> None:
         save_position(self.config_file, self.root.winfo_x(), self.root.winfo_y())
@@ -186,6 +224,7 @@ class Overlay:
         if self._refresh_from_live():
             return
         self._last_live_state = None
+        self._is_live = False
         self._refresh_from_file()
 
     def _refresh_from_live(self) -> bool:
@@ -202,7 +241,8 @@ class Overlay:
             self._log_finished_run(state)
             self._log_day(state)
             self._last_sig = None  # khi mất live, buộc đọc lại file
-            self._set_status(f"LIVE {time.strftime('%H:%M:%S')}")
+            self._is_live = True
+            self._set_status(f"{LIVE_STATUS_PREFIX} {time.strftime('%H:%M:%S')}")
         return True
 
     def _track_fever(self, state: RunState) -> None:
@@ -247,8 +287,8 @@ class Overlay:
             return
         self._last_sig = sig
         self._log_finished_run(self.state)
-        live_note = f" | {self.live.status}" if self.live is not None else ""
-        self._set_status(f"File save {time.strftime('%H:%M:%S')}{live_note}")
+        live_note = f"{SEP}{self.live.status}" if self.live is not None else ""
+        self._set_status(f"Đọc file save lúc {time.strftime('%H:%M:%S')}{live_note}")
 
     def _set_status(self, status: str) -> None:
         self.status = status
@@ -261,7 +301,7 @@ class Overlay:
         texts = self.texts
         if self.live is not None:
             texts = self.live.texts() or texts  # tên chính thức mới nhất từ game
-            if self.status.startswith("LIVE"):
+            if self._is_live:
                 odds, multiplier = self.live.odds()  # tỉ lệ chỉ có ý nghĩa khi đang đọc trực tiếp
                 shop_sim = self.live.shop_simulation()
                 quota = self.live.quota()
@@ -278,8 +318,8 @@ class Overlay:
         lines = format_state(self.state, names, odds, multiplier, descriptions, shop_sim,
                              quota, grade_odds, merchant, fever_strikes, next_quota,
                              summary_line(self._runs), relic_rank, schedule)
-        hint = "F9: khóa vị trí" if self._drag_mode else "F8 ẩn | F9 di chuyển | F10 thoát"
-        lines = lines + [(self.status, DIM), (hint, WARN if self._drag_mode else DIM)]
+        hint = DRAG_HINT_TEXT if self._drag_mode else HINT_TEXT
+        lines = lines + [("", NORMAL), (self.status, DIM), (hint, WARN if self._drag_mode else DIM)]
         _fill_text(self.text, lines)
         steps = build_steps(self.state, odds, multiplier, quota, grade_odds, shop_sim, names, merchant,
                             fever_strikes, next_quota, reroll_text, relic_rank, schedule)

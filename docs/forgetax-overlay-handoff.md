@@ -3,13 +3,20 @@
 Overlay (Python + tkinter, Windows) hiển thị trạng thái lượt chơi ForgeTax và gợi ý chiến thuật.
 Chạy: `cd E:\tool-game && pythonw -m forgetax_overlay` (`--no-live` chỉ đọc file save, `--once` in console).
 Test: `python -m pytest -q` (pytest, `pyproject.toml` đặt `pythonpath=["."]`).
-Phím: F8 ẩn/hiện, F9 kéo/khóa vị trí (lưu `%APPDATA%\ForgeTaxOverlay\config.json`), F10 thoát.
+Phím: F7 bật/tắt khung "Chú giải", F8 ẩn/hiện, F9 kéo/khóa vị trí (lưu `%APPDATA%\ForgeTaxOverlay\config.json`), F10 thoát.
 Khởi động lại sau khi sửa: dừng tiến trình `pythonw` đang chạy overlay rồi chạy lại lệnh trên.
 
 ## Nguyên tắc
 - **Chỉ đọc**: không ghi field nào của game, không ghi file save. Mô phỏng dùng object MỚI tạo bằng `JsonUtility.FromJson`.
 - Không làm tính năng đoán trước kết quả từ trạng thái RNG (`random.s0..s3` trong save) – game có bảng xếp hạng.
 - Mọi lời khuyên dựa trên xác suất do chính hàm của game tính.
+- Chữ trên UI: tiếng Việt, không viết tắt, dùng thuật ngữ chính thức của game (bảng ngôn ngữ `vi`):
+  Gãy / Hư tổn / Không đổi / Thành công / Xuất sắc, cấp (+N), di vật, cửa hàng di vật, đổi hàng,
+  lượt mua (ở cửa hàng di vật), Vảy Rồng (Nứt), Dây Cót (Hối Tiếc), Xuất Thần, tích lực.
+  Số qua `text_format` (`fmt_int` 44.200, `fmt_ratio` ×1,21, `fmt_pct` 19%); "→" thay "->",
+  " · " ngăn ý; dòng > `LINE_WIDTH` (72) tự tách thành dòng phụ thụt vào (`wrap_lines`);
+  khung trái cách phần bằng dòng trống; khung phải mỗi bước một dòng, chi tiết ở dòng phụ.
+  Thuật ngữ mới trên UI -> thêm giải thích vào `legend.py`.
 
 ## Kiến trúc (`forgetax_overlay/`)
 | File | Vai trò |
@@ -31,7 +38,9 @@ Khởi động lại sau khi sửa: dừng tiến trình `pythonw` đang chạy 
 | `merchant_advice.py` | Gợi ý mua hàng Thương nhân ma. |
 | `action_plan.py` | Khung "Việc cần làm" (góc phải). |
 | `formatter.py` | Khung chi tiết (góc trái). |
-| `overlay.py` | Hai cửa sổ tkinter trong suốt, click-through (WS_EX_TRANSPARENT). |
+| `text_format.py` | Định dạng số kiểu Việt + tách dòng dài, dùng chung cho mọi khung. |
+| `legend.py` | Nội dung khung "Chú giải" (F7). |
+| `overlay.py` | Ba cửa sổ tkinter trong suốt, click-through (WS_EX_TRANSPARENT): chi tiết, "Việc cần làm", "Chú giải" (ẩn tới khi bấm F7). |
 | `live_quota_schedule.js` | Nối sau `live_relic_rank.js`. `forecastSchedule` gửi `quotaSchedule` = cống từng ngày round+1..min(contractDeadlineRound, round+10) (`nextQuota` = phần tử đầu). |
 | `live_relic_rank.js` | Nối SAU `live_capture.js` thành một script (`live_source.load_script_source`), dùng chung helper. Xếp hạng relic theo mức giảm gãy. |
 | `relic_rank.py` | Parse `relicRank`, xếp hạng (top 8 theo giảm gãy @+12, hòa -> +16 -> +8), khung "Relic giảm gãy", bước "★ Mua". |
