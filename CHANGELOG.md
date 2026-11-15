@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Settings window at start-up: language (or follow the game), opacity, font size, which panels
+  to show, live reading on/off, reset the overlay position, skip it next time. Start sends it to
+  the taskbar; click it there or press F6 to change things while playing, they apply right away.
+  `--no-settings` skips it for one launch.
 - The overlay follows the game's language. Catalogs for English, Korean, Japanese, Simplified and
   Traditional Chinese, German, Spanish, Brazilian Portuguese, Russian and Vietnamese.
 - Relic names and descriptions come from the game's table for the current language.

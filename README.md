@@ -38,10 +38,17 @@ Frenzy, relics, tribute...) use the game's own translations where they exist.
 
 1. Grab `ForgeSeer-<version>-windows.zip` from [Releases](https://github.com/tranhoangtu-it/forgeseer/releases/latest) and unzip it.
 2. Run ForgeTax in windowed or borderless mode. The overlay can't draw over exclusive fullscreen.
-3. Start `ForgeSeer.exe`. It finds the game on its own.
+3. Start `ForgeSeer.exe`. A small settings window opens first: language, opacity, font size,
+   which panels to show, live reading on or off. Press Start and it drops to the taskbar while
+   the overlay takes over. It finds the game on its own.
+
+Click the ForgeSeer icon on the taskbar (or press F6) to bring the settings back mid-game; changes
+show up on the overlay right away. Closing that window with X just minimizes it again. If you
+don't want to see it at every launch, tick "Skip this screen next time" (F6 still opens it).
 
 | Key | |
 |---|---|
+| F6 | settings |
 | F7 | legend on/off |
 | F8 | hide/show |
 | F9 | drag to move, press again to lock (position is remembered) |
@@ -55,6 +62,7 @@ python -m forgeseer             # overlay
 python -m forgeseer --no-live   # read the save file only
 python -m forgeseer --once      # print the state to the console
 python -m forgeseer --lang de   # pick a language instead of following the game
+python -m forgeseer --no-settings  # skip the settings window, go straight to the overlay
 ```
 
 ## How it works
@@ -82,8 +90,10 @@ Overlay tự đổi theo ngôn ngữ đang chọn trong game, tiếng Việt dù
 chính thức.
 
 Cách dùng: tải bản zip ở [Releases](https://github.com/tranhoangtu-it/forgeseer/releases/latest),
-mở game ở chế độ cửa sổ hoặc không viền, rồi chạy `ForgeSeer.exe`. F7 chú giải, F8 ẩn, F9 di
-chuyển, F10 thoát. Công cụ chỉ đọc, không sửa gì trong game; phần mềm diệt virus có thể cảnh báo
+mở game ở chế độ cửa sổ hoặc không viền, rồi chạy `ForgeSeer.exe`. Màn hình cài đặt hiện ra trước (ngôn ngữ, độ đậm,
+cỡ chữ, khung nào hiện, bật/tắt đọc trực tiếp); bấm Bắt đầu là nó thu xuống taskbar, chỉ còn
+overlay. Bấm biểu tượng trên taskbar hoặc F6 để mở lại. F7 chú giải, F8 ẩn, F9 di chuyển, F10
+thoát. Công cụ chỉ đọc, không sửa gì trong game; phần mềm diệt virus có thể cảnh báo
 vì Frida gắn vào tiến trình game.
 
 ## Contributing

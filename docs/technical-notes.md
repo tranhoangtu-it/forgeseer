@@ -10,10 +10,11 @@ python -m forgeseer             # overlay (attaches to the game if it's running)
 python -m forgeseer --no-live   # save file only
 python -m forgeseer --once      # print the current state and exit
 python -m forgeseer --lang ja   # force a language
+python -m forgeseer --no-settings  # skip the start-up settings window
 python -m pytest -q
 ```
 
-Hotkeys: F7 legend, F8 hide/show, F9 drag/lock (position is saved in
+Hotkeys: F6 settings, F7 legend, F8 hide/show, F9 drag/lock (position is saved in
 `%APPDATA%\ForgeTaxOverlay\config.json`), F10 quit.
 
 ## Ground rules
@@ -63,7 +64,10 @@ I tested), so treat it as best effort; `--lang` always works.
 | `reroll_advice.py` | When to reroll the relic shop (free, or gold ≥ 10× the price). |
 | `run_log.py` | Appends finished runs to `%APPDATA%\ForgeTaxOverlay\runs.jsonl` (deduped by anonymousRunId) and builds the summary line. |
 | `day_log.py` | Appends an end-of-day snapshot to `days.jsonl` (round, quota, delivered, holdings, top grade, missed). Not shown on the overlay yet. |
-| `config.py` | Shared config.json (position `x/y`, `fever`). Writes merge keys. |
+| `config.py` | Shared config.json (position `x/y`, `fever`, `game_lang`, `settings`). Writes merge keys. |
+| `settings.py` | `Settings` (language or `auto`, opacity 40-100, font 8-16, panel flags, live, skip). Pure: clamping, load/save under `settings`, which panels are visible. `--lang` / `--no-live` pre-fill it. |
+| `settings_window.py` | Start-up settings screen (ttk). The Tk root itself, so it has a taskbar icon. Only reports changes through callbacks. |
+| `app.py` | One Tk root, one mainloop. Start saves the settings, iconifies the window and creates the overlay; F6 / taskbar restore shows it again and every change goes to `Overlay.apply_settings`. X minimizes, Quit / F10 stops everything including `LiveSource`. |
 | `tribute.py` | Tribute status, tribute-driven verdicts, and `choose_tribute`: tries every subset (n ≤ 12, greedy above that) and picks the swords that cover the tribute while giving up the least future value (value × `Plan.ratio`, finished swords count as 1; ties go to the smallest overpay). |
 | `pace.py` | Contract pace: swords on hand (value × safe-strike expectation) plus 3 fresh +0 swords a day against the cumulative tribute of the next 3 days. `risk_hint` says push the main sword when behind, and don't take ≥10% break risks when ahead by 1.5×. It never overrides a sword held for today's tribute. |
 | `sword_section.py` | Sword list and `sword_verdict` (priority: Frenzy > tribute > plan > EV). |
@@ -74,7 +78,8 @@ I tested), so treat it as best effort; `--lang` always works.
 | `formatter.py` | Left-hand detail panel. |
 | `text_format.py` | Number formatting and line wrapping shared by every panel. |
 | `legend.py` | F7 legend. |
-| `overlay.py` | Three transparent click-through tkinter windows (WS_EX_TRANSPARENT): details, to-do, legend. |
+| `overlay.py` | The three overlay panels (details, to-do, legend), polling, hotkeys, live settings changes (opacity, font, panels, language, starting/stopping `LiveSource`). |
+| `overlay_windows.py` | Win32 bits: borderless topmost click-through Toplevels (WS_EX_TRANSPARENT), shared fonts that resize every panel at once. |
 | `relic_names.py/.json` | Fallback relic names (my own Vietnamese translations of the ids); official names come from the game and are cached in `%APPDATA%\ForgeTaxOverlay\relic_texts.json` for every language. |
 
 ## What I know about the game
