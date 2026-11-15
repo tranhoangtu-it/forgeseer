@@ -16,7 +16,7 @@ from .i18n import t
 from .pace import contract_pace, pace_detail, pace_line, schedule_lines
 from .planner import FEVER_THRESHOLD, Plan, plan_sword
 from .save_reader import RunState, Sword, display_sort_key
-from .text_format import SEP, fmt_int, fmt_pct, fmt_ratio
+from .text_format import LOW, SEP, fmt_int, fmt_pct, fmt_ratio
 from .tribute import TributeStatus, tribute_decision, tribute_override, tribute_status
 
 TITLE, NORMAL, GOOD, WARN, DIM = "title", "normal", "good", "warn", "dim"
@@ -131,7 +131,7 @@ def _advice_lines(sw: Sword, odds: OddsMap, multiplier: float, status: TributeSt
         fever_note = (t("sword.fever_next") if plan.strikes_to_fever == 0
                       else t("sword.fever_in", count=plan.strikes_to_fever))
         lines.append(("    " + t("sword.plan", verdict=plan.verdict, ratio=fmt_ratio(plan.ratio))
-                      + SEP + fever_note, DIM))
+                      + SEP + fever_note, DIM, LOW))
     return lines
 
 
@@ -157,7 +157,7 @@ def sword_lines(state: RunState, odds: OddsMap, multiplier: float, quota: float,
         sw = members[0]
         head, details = _label(sw, len(members))
         lines.append(("  " + head, GOOD if sw.heated else NORMAL))
-        lines.append(("    " + SEP.join(details), DIM))
+        lines.append(("    " + SEP.join(details), DIM, LOW))
         lines += _advice_lines(sw, odds, multiplier, status, table, fever_strikes)
     hidden = sum(len(m) for m in list(groups.values())[MAX_GROUPS_SHOWN:])
     if hidden:

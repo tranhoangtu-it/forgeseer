@@ -1,5 +1,6 @@
 from forgeseer.advisor import ShopSimulation
 from forgeseer.formatter import format_state
+from forgeseer.i18n import t
 from forgeseer.relic_rank import parse_relic_rank
 from forgeseer.save_reader import Offer, Relic, RunState, Sword
 
@@ -200,3 +201,18 @@ def test_tribute_area_shows_schedule_and_pace():
     assert "Cống sắp tới: ngày 8: 8.700 · ngày 9: 13.200 · ngày 10: 20.100" in text
     assert "Chậm tiến độ: thiếu" in text
     assert "Ước tính sẽ có" in text
+
+
+def test_keep_priority_marks_optional_lines_only_when_asked():
+    state = _state(shopping=True)
+    descriptions = {"hold": "Giữ nguyên cấp kiếm khi đập hỏng một lần trong ngày"}
+
+    plain_lines = format_state(state, descriptions=descriptions)
+    tagged = format_state(state, descriptions=descriptions, keep_priority=True)
+
+    assert all(len(line) == 2 for line in plain_lines)
+    assert [line[:2] for line in tagged] == plain_lines
+    low = [line[0] for line in tagged if len(line) == 3 and line[2] == "low"]
+    assert any("Giữ nguyên cấp kiếm" in text for text in low)  # mô tả món trong cửa hàng
+    assert t("stats.title") in low  # cả khối thống kê
+    assert not any("Ngày 7" in text for text in low)

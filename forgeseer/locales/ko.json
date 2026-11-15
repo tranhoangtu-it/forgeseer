@@ -165,6 +165,7 @@
   "live.no_frida": "직접 읽기 꺼짐: frida 미설치 (pip install frida)",
   "hint.keys": "F6 설정 · F7 범례 · F8 숨기기 · F9 이동 · F10 종료",
   "hint.drag": "F9: 위치 고정",
+  "layout.more": "… {count}줄 더 있음 (화면에 맞게 줄임)",
 
   "legend.title": "범례 (F7로 닫기)",
   "legend.outcomes.term": "파괴 · 손상 · 유지 · 성공 · 대성공",

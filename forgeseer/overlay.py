@@ -19,15 +19,17 @@ from .i18n import choose_language, get_language, set_language, t, windows_ui_lan
 from .legend import legend_lines
 from .live_source import LiveSource
 from .merchant_advice import evaluate_merchant, merchant_active
-from .overlay_windows import OverlayFonts, OverlayWindow, key_is_down
+from .overlay_windows import OverlayWindow, key_is_down, measure_metrics
+from .panel_layout import MIN_FONT, Layout, fit_layout
 from .relic_names import load_relic_texts
 from .run_log import DEFAULT_RUN_LOG, append_run, load_runs, record_from_state, summary_line
 from .save_reader import RunState, SaveReadError, find_run_save, load_run_state
-from .settings import Settings, language_override, panel_visibility
+from .settings import FONT_MAX, Settings, language_override, panel_visibility
 from .text_format import SEP
 
 HOTKEY_POLL_MS = 80
-PANEL_MARGIN = 20  # khoảng cách khung "Việc cần làm" tới mép phải/trên màn hình (px)
+PANEL_MARGIN = 20  # khoảng cách các khung tới mép vùng làm việc của màn hình (px)
+STATUS_LINES = 3  # dòng trống + trạng thái + phím tắt ở cuối khung chi tiết, không bao giờ cắt
 LIVE_FRESH_SECONDS = 3.0  # dữ liệu trực tiếp cũ hơn mức này -> quay về file save
 
 VK_SETTINGS, VK_TOGGLE_LEGEND = 0x75, 0x76  # F6, F7
@@ -74,14 +76,13 @@ class Overlay:
         self._drag_origin = (0, 0)
         self._running = True
 
-        self.fonts = OverlayFonts(master, settings.font_size)
-        self.details = OverlayWindow(master, self.fonts, settings.alpha)
+        self.metrics = measure_metrics(master, range(MIN_FONT, FONT_MAX + 1))
+        self.details = OverlayWindow(master, settings.font_size, settings.alpha)
         self.details.move(x, y)
         self.details.text.bind("<ButtonPress-1>", self._on_drag_start)
         self.details.text.bind("<B1-Motion>", self._on_drag_move)
-        self.panel = OverlayWindow(master, self.fonts, settings.alpha)  # "Việc cần làm", góc phải
-        self.legend = OverlayWindow(master, self.fonts, settings.alpha)  # "Chú giải" (F7)
-        self.legend.fill(legend_lines())
+        self.panel = OverlayWindow(master, settings.font_size, settings.alpha)  # "Việc cần làm"
+        self.legend = OverlayWindow(master, settings.font_size, settings.alpha)  # "Chú giải" (F7)
         self._set_live(settings.live)
         self.render()
         self._update_visibility()
@@ -95,9 +96,6 @@ class Overlay:
         if settings.opacity != old.opacity:
             for window in (self.details, self.panel, self.legend):
                 window.set_alpha(settings.alpha)
-        if settings.font_size != old.font_size:
-            self.fonts.resize(settings.font_size)
-            self.legend.fill(legend_lines())
         if settings.live != old.live:
             self._set_live(settings.live)
         self._update_language()
@@ -131,6 +129,15 @@ class Overlay:
         self.legend.show(legend)
         if legend:
             self._place_legend()
+
+    def _fit(self, window: OverlayWindow, lines: list, pinned_tail: int = 0) -> Layout:
+        """Co khung cho vừa vùng làm việc của màn hình đang chứa nó, rồi vẽ."""
+        left, top, right, bottom = window.work_area()
+        layout = fit_layout(lines, self.metrics, right - left - 2 * PANEL_MARGIN,
+                            bottom - top - 2 * PANEL_MARGIN, self.settings.font_size,
+                            pinned_tail=pinned_tail)
+        window.fill(layout)
+        return layout
 
     # ---------- vòng lặp ----------
     def start(self) -> None:
@@ -170,11 +177,11 @@ class Overlay:
         self.master.after(HOTKEY_POLL_MS, self._poll_hotkeys)
 
     def _place_legend(self) -> None:
-        """Khung chú giải ở giữa mép trên màn hình."""
-        window = self.legend.window
-        window.update_idletasks()
-        x = (window.winfo_screenwidth() - window.winfo_reqwidth()) // 2
-        self.legend.move(max(x, 0), PANEL_MARGIN)
+        """Khung chú giải ở giữa mép trên vùng làm việc của màn hình."""
+        self._fit(self.legend, legend_lines())
+        left, top, right, _ = self.legend.work_area()
+        width, _ = self.legend.size()
+        self.legend.move(max(left + (right - left - width) // 2, left), top + PANEL_MARGIN)
 
     def _save_position(self) -> None:
         save_position(self.config_file, self.details.window.winfo_x(),
@@ -228,7 +235,6 @@ class Overlay:
             return
         set_language(lang)
         self.texts = load_relic_texts(lang=lang)
-        self.legend.fill(legend_lines())
         if self.legend.window.winfo_viewable():
             self._place_legend()
 
@@ -304,17 +310,27 @@ class Overlay:
                     if self.state is not None and merchant_active(self.state) else [])
         lines = format_state(self.state, names, odds, multiplier, descriptions, shop_sim,
                              quota, grade_odds, merchant, fever_strikes, next_quota,
-                             summary_line(self._runs), relic_rank, schedule)
+                             summary_line(self._runs), relic_rank, schedule, keep_priority=True)
         hint = t("hint.drag") if self._drag_mode else t("hint.keys")
         lines = lines + [("", NORMAL), (self.status, DIM), (hint, WARN if self._drag_mode else DIM)]
-        self.details.fill(lines)
+        self._fit(self.details, lines, pinned_tail=STATUS_LINES)
+        self._keep_details_on_screen()
         steps = build_steps(self.state, odds, multiplier, quota, grade_odds, shop_sim, names, merchant,
                             fever_strikes, next_quota, reroll_text, relic_rank, schedule)
-        self.panel.fill(steps)
-        window = self.panel.window
-        window.update_idletasks()  # đặt khung "Việc cần làm" sát mép phải màn hình
-        self.panel.move(window.winfo_screenwidth() - window.winfo_reqwidth() - PANEL_MARGIN,
-                        PANEL_MARGIN)
+        self._fit(self.panel, steps)
+        left, top, right, _ = self.panel.work_area()  # sát mép phải vùng làm việc
+        width, _ = self.panel.size()
+        self.panel.move(max(right - width - PANEL_MARGIN, left), top + PANEL_MARGIN)
+
+    def _keep_details_on_screen(self) -> None:
+        """Đẩy khung chi tiết vào trong vùng làm việc nếu nó lòi ra ngoài (sau khi co/kéo)."""
+        left, top, right, bottom = self.details.work_area()
+        width, height = self.details.size()
+        x, y = self.details.window.winfo_x(), self.details.window.winfo_y()
+        new_x = max(left, min(x, right - width))
+        new_y = max(top, min(y, bottom - height))
+        if (new_x, new_y) != (x, y):
+            self.details.move(new_x, new_y)
 
     # ---------- kéo thả khi bật F9 ----------
     def _on_drag_start(self, event: tk.Event) -> None:

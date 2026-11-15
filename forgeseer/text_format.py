@@ -15,8 +15,9 @@ LINE_WIDTH = 72  # ~70 ký tự; đủ cho dòng 5 tỉ lệ kết quả thụt 
 SEP = " · "
 ARROW = " → "
 CONTINUATION_INDENT = 2  # dòng phụ thụt thêm so với dòng chính
+LOW = "low"  # phần tử thứ ba (tùy chọn) của một dòng: ưu tiên thấp, bỏ được khi khung quá cao
 
-Line = tuple[str, str]
+Line = tuple[str, str]  # (chữ, tag màu); dòng ưu tiên thấp có thêm phần tử thứ ba LOW
 
 
 def _localize(text: str) -> str:
@@ -110,5 +111,19 @@ def wrap_line(text: str, width: int = LINE_WIDTH) -> list[str]:
 
 
 def wrap_lines(lines: list[Line], width: int = LINE_WIDTH) -> list[Line]:
-    """Áp ``wrap_line`` cho mọi dòng, giữ nguyên tag màu."""
-    return [(row, tag) for text, tag in lines for row in wrap_line(text, width)]
+    """Áp ``wrap_line`` cho mọi dòng, giữ nguyên tag màu (và mức ưu tiên nếu có)."""
+    return [(row, *rest) for text, *rest in lines for row in wrap_line(text, width)]
+
+
+def low(lines: list[Line]) -> list[Line]:
+    """Đánh dấu các dòng ưu tiên thấp: chế độ gọn bỏ chúng trước khi phải cắt bớt khung."""
+    return [(line[0], line[1], LOW) for line in lines]
+
+
+def is_low(line: tuple[str, ...]) -> bool:
+    return len(line) > 2 and line[2] == LOW
+
+
+def plain(lines: list[tuple[str, ...]]) -> list[Line]:
+    """Bỏ mức ưu tiên, chỉ còn (chữ, tag màu)."""
+    return [(line[0], line[1]) for line in lines]

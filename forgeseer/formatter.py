@@ -16,7 +16,7 @@ from .relic_rank import RelicRank, rank_relics, relic_rank_lines
 from .save_reader import RunState, Sword
 from .shop_advice import best_drop, buy_line, drop_line, grade_line, target_sword
 from .sword_section import sword_lines, tribute_lines
-from .text_format import SEP, fmt_int, fmt_ratio, wrap_lines
+from .text_format import LOW, SEP, fmt_int, fmt_ratio, low, plain, wrap_lines
 
 # Tag màu dùng chung với overlay.py
 TITLE, NORMAL, GOOD, WARN, DIM = "title", "normal", "good", "warn", "dim"
@@ -37,9 +37,10 @@ def format_state(state: RunState | None, names: dict[str, str] | None = None,
                  fever_strikes: int = DEFAULT_FEVER_STRIKES,
                  next_quota: float = 0.0, runs_summary: str = "",
                  relic_rank: RelicRank | None = None,
-                 schedule: tuple[float, ...] = ()) -> list[Line]:
+                 schedule: tuple[float, ...] = (), keep_priority: bool = False) -> list[Line]:
     """``names``: id di vật -> tên; ``odds``/``shop_sim``/``quota``/``grade_odds``/``relic_rank``/
-    ``schedule``: chỉ có khi đọc trực tiếp từ game."""
+    ``schedule``: chỉ có khi đọc trực tiếp từ game. ``keep_priority``: giữ phần tử thứ ba LOW
+    của dòng ưu tiên thấp (overlay dùng để co khung cho vừa màn hình)."""
     if state is None:
         return [("ForgeTax", TITLE), (t("state.no_run"), DIM)]
     names = names or {}
@@ -51,16 +52,17 @@ def format_state(state: RunState | None, names: dict[str, str] | None = None,
         tribute_lines(state, quota, next_quota, schedule, grade_odds, multiplier, fever_strikes),
         sword_lines(state, odds, multiplier, quota, grade_odds, fever_strikes),
         _relic_lines(state, names, ctx),
-        relic_rank_lines(relic_rank, names, offered_ids(state, merchant)),
+        low(relic_rank_lines(relic_rank, names, offered_ids(state, merchant))),
     ]
     if state.shopping:
         sections.append(_shop_lines(state, names, descriptions or {}, ctx))
     if merchant:
         starred = {r.id for r in rank_relics(relic_rank)}
         sections.append(_merchant_lines(merchant, names, starred))
-    sections.append(_stats_lines(state, fever_strikes)
-                    + ([(runs_summary, DIM)] if runs_summary else []))
-    return wrap_lines(join_sections(sections))
+    sections.append(low(_stats_lines(state, fever_strikes)
+                        + ([(runs_summary, DIM)] if runs_summary else [])))
+    lines = wrap_lines(join_sections(sections))
+    return lines if keep_priority else plain(lines)
 
 
 def join_sections(sections: list[list[Line]]) -> list[Line]:
@@ -163,7 +165,7 @@ def _shop_lines(s: RunState, names: dict[str, str], descriptions: dict[str, str]
                       + t("shop.price", price=fmt_int(o.price)) + status,
                       DIM if o.sold else GOOD))
         if not o.sold:
-            lines += [(f"      {row}", DIM) for row in _wrap(descriptions.get(o.id, ""))]
+            lines += [(f"      {row}", DIM, LOW) for row in _wrap(descriptions.get(o.id, ""))]
             effect = buy_line(o.id, ctx.target, ctx.odds, ctx.sim, ctx.multiplier, ctx.names)
             if effect is not None:
                 lines.append(effect)

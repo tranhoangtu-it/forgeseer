@@ -165,6 +165,7 @@
   "live.no_frida": "Đọc trực tiếp tắt: chưa cài frida (pip install frida)",
   "hint.keys": "F6 cài đặt · F7 chú giải · F8 ẩn · F9 di chuyển · F10 thoát",
   "hint.drag": "F9: khóa vị trí",
+  "layout.more": "… còn {count} dòng nữa (khung đã thu gọn cho vừa màn hình)",
 
   "legend.title": "Chú giải (F7 để tắt)",
   "legend.outcomes.term": "Gãy · Hư tổn · Không đổi · Thành công · Xuất sắc",

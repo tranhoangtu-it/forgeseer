@@ -165,6 +165,7 @@
   "live.no_frida": "直接读取关闭: 未安装 frida（pip install frida）",
   "hint.keys": "F6 设置 · F7 说明 · F8 隐藏 · F9 移动 · F10 退出",
   "hint.drag": "F9: 锁定位置",
+  "layout.more": "… 还有 {count} 行（已缩减以适应屏幕）",
 
   "legend.title": "说明（按F7关闭）",
   "legend.outcomes.term": "破坏 · 损伤 · 维持 · 成功 · 大成功",

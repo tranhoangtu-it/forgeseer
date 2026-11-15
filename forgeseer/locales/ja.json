@@ -165,6 +165,7 @@
   "live.no_frida": "直接読み取りオフ: frida が未インストール（pip install frida）",
   "hint.keys": "F6 設定 · F7 凡例 · F8 隠す · F9 移動 · F10 終了",
   "hint.drag": "F9: 位置を固定",
+  "layout.more": "… 残り{count}行（画面に収まるよう省略）",
 
   "legend.title": "凡例（F7で閉じる）",
   "legend.outcomes.term": "破壊 · 損傷 · 維持 · 成功 · 大成功",
