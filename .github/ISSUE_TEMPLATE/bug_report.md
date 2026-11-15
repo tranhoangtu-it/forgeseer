@@ -1,21 +1,21 @@
 ---
-name: 🐞 Báo lỗi
-about: Overlay hiển thị sai, không kết nối được game, bị lỗi khi chạy...
+name: Bug report
+about: Wrong numbers, can't connect to the game, crashes
 labels: bug
 ---
 
-**Mô tả lỗi**
-Chuyện gì xảy ra? Bạn mong đợi điều gì?
+**What happened, and what did you expect?**
 
-**Cách tái hiện**
-1. ...
-2. ...
+**Steps to reproduce**
+1.
+2.
 
-**Thông tin**
-- Phiên bản ForgeSeer:
-- Ngày trong game (vd. ngày 12/24):
-- Chạy bằng: `ForgeSeer.exe` / `python -m forgeseer`
-- Dòng trạng thái cuối overlay (vd. "Đọc trực tiếp lúc ..."):
+**Details**
+- ForgeSeer version:
+- Game language:
+- In-game day (e.g. day 12/24):
+- Running `ForgeSeer.exe` or `python -m forgeseer`:
+- Last status line on the overlay (e.g. "Live read at ..."):
 
-**Ảnh chụp**
-Nếu có, đính kèm ảnh chụp overlay.
+**Screenshot**
+A screenshot of the overlay helps a lot if you have one.

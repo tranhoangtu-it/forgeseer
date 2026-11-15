@@ -1,11 +1,11 @@
 ---
-name: 💡 Đề xuất tính năng
-about: Ý tưởng giúp ForgeSeer hữu ích hơn
+name: Feature idea
+about: Something that would make ForgeSeer more useful
 labels: enhancement
 ---
 
-**Bạn muốn ForgeSeer làm gì?**
+**What would you like it to do?**
 
-**Vì sao nó giúp bạn đi xa hơn trong game?**
+**When would it help you in a run?**
 
-**Gợi ý cách hiển thị (nếu có)**
+**How should it look on the overlay? (optional)**
