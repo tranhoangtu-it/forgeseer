@@ -12,6 +12,7 @@ from ctypes import wintypes
 from pathlib import Path
 
 from .config import DEFAULT_CONFIG_FILE, save_position
+from .day_log import DEFAULT_DAY_LOG, DayTracker, append_day, load_day_keys, observe_day
 from .formatter import DIM, GOOD, NORMAL, TITLE, WARN, format_state
 from .action_plan import ALERT, build_steps
 from .fever_calibration import FeverTracker, load_fever_stats, observe, save_fever_stats
@@ -98,6 +99,8 @@ class Overlay:
         self._fever_tracker = FeverTracker()
         self._fever_stats = load_fever_stats(config_file)
         self._runs = load_runs(DEFAULT_RUN_LOG)
+        self._day_tracker = DayTracker()
+        self._day_keys = load_day_keys(DEFAULT_DAY_LOG)
         self.state: RunState | None = None
         self.status = "Đang tìm file save..."
         self._last_sig: tuple[str, int] | None = None
@@ -197,6 +200,7 @@ class Overlay:
             self.state = state
             self._track_fever(state)
             self._log_finished_run(state)
+            self._log_day(state)
             self._last_sig = None  # khi mất live, buộc đọc lại file
             self._set_status(f"LIVE {time.strftime('%H:%M:%S')}")
         return True
@@ -216,6 +220,13 @@ class Overlay:
         record = record_from_state(state)
         if append_run(DEFAULT_RUN_LOG, record, self._runs):
             self._runs = [*self._runs, record]
+
+    def _log_day(self, state: RunState) -> None:
+        """Sang ngày mới / kết thúc lượt -> ghi bản chụp cuối ngày vào days.jsonl (mỗi ngày một lần)."""
+        quota = self.live.quota() if self.live is not None else 0.0
+        self._day_tracker, record = observe_day(self._day_tracker, state, quota)
+        if record is not None and append_day(DEFAULT_DAY_LOG, record, self._day_keys):
+            self._day_keys = {*self._day_keys, record.key}
 
     def _refresh_from_file(self) -> None:
         path = find_run_save(self.save_dir)
