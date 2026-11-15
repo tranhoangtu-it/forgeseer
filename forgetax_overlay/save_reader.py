@@ -137,6 +137,11 @@ class RunState:
     run_id: str = ""  # campaign.anonymousRunId (định danh lượt chơi)
 
 
+def display_sort_key(sw: Sword) -> tuple[bool, float]:
+    """Thứ tự hiển thị kiếm: kiếm trên đe luôn đứng đầu, còn lại theo giá trị giảm dần."""
+    return (sw.place != PLACE_ANVIL, -sw.value)
+
+
 def find_run_save(save_dir: Path = DEFAULT_SAVE_DIR) -> Path | None:
     """Trả về file save lượt chơi mới nhất; bỏ qua bản sao lưu ``*.previous``."""
     if not save_dir.is_dir():

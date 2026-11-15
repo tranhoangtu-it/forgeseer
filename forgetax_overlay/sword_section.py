@@ -14,7 +14,7 @@ from .advisor import Advice, GradeOddsTable, SwordOdds, advise
 from .fever_calibration import DEFAULT_FEVER_STRIKES
 from .pace import contract_pace, pace_detail, pace_line, schedule_lines
 from .planner import FEVER_THRESHOLD, Plan, plan_sword
-from .save_reader import RunState, Sword
+from .save_reader import RunState, Sword, display_sort_key
 from .text_format import SEP, fmt_int, fmt_pct, fmt_ratio
 from .tribute import TributeStatus, tribute_override, tribute_status
 
@@ -137,7 +137,7 @@ def odds_text(o: SwordOdds) -> str:
 def sword_lines(state: RunState, odds: OddsMap, multiplier: float, quota: float,
                 table: GradeOddsTable | None,
                 fever_strikes: int = DEFAULT_FEVER_STRIKES) -> list[Line]:
-    live = sorted((sw for sw in state.swords if sw.is_live), key=lambda sw: sw.value, reverse=True)
+    live = sorted((sw for sw in state.swords if sw.is_live), key=display_sort_key)
     lines: list[Line] = [(f"Kiếm đang giữ ({len(live)}):", TITLE)]
     if not live:
         return lines + [("  (không có)", DIM)]

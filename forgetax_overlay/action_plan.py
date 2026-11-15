@@ -13,7 +13,7 @@ from .pace import Pace, contract_pace, pace_line, risk_hint
 from .relic_names import display_name
 from .relic_rank import RelicRank, star_step, top_offer
 from .reroll_advice import parse_reroll_text, reroll_line
-from .save_reader import RunState, Sword
+from .save_reader import RunState, Sword, display_sort_key
 from .shop_advice import best_break_reduction, best_purchase, target_sword
 from .sword_section import sword_verdict
 from .text_format import ARROW, SEP, fmt_int, fmt_pct, fmt_ratio, wrap_lines
@@ -151,7 +151,7 @@ def build_steps(state: RunState | None, odds: OddsMap, multiplier: float, quota:
     if state is None:
         return lines + [("Chưa có dữ liệu lượt chơi.", DIM)]
     names = names or {}
-    live = sorted((s for s in state.swords if s.is_live), key=lambda s: s.value, reverse=True)
+    live = sorted((s for s in state.swords if s.is_live), key=display_sort_key)
     status = tribute_status(state, quota)
     verdicts = {s.serial: v for s in live
                 if (v := sword_verdict(s, odds, multiplier, status, table, fever_strikes)) is not None}

@@ -142,3 +142,17 @@ def test_run_id_read_from_campaign():
                         "payload": _json.dumps({"campaign": {"anonymousRunId": "r1"}})})
 
     assert _parse(text).run_id == "r1"
+
+
+def test_display_sort_key_puts_anvil_sword_first_then_by_value():
+    from forgetax_overlay.save_reader import PLACE_ANVIL, PLACE_RACK, Sword, display_sort_key
+    base = dict(grade=5, strikes=1, success_streak=0, normal_hits=1, normal_successes=1,
+                heated=False, broken=False, active=True, rack=0, damage_count=0,
+                fever_remaining=0.0)
+    big = Sword(serial=1, value=90000, peak=90000, place=PLACE_RACK, **base)
+    small_on_anvil = Sword(serial=2, value=320, peak=320, place=PLACE_ANVIL, **base)
+    mid = Sword(serial=3, value=5000, peak=5000, place=PLACE_RACK, **base)
+
+    ordered = sorted([big, small_on_anvil, mid], key=display_sort_key)
+
+    assert [s.serial for s in ordered] == [2, 1, 3]
