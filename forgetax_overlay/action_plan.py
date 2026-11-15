@@ -8,13 +8,14 @@ from __future__ import annotations
 from .advisor import GradeOddsTable, ShopSimulation, SwordOdds
 from .fever_calibration import DEFAULT_FEVER_STRIKES
 from .merchant_advice import MerchantItem
+from .pace import Pace, contract_pace, pace_line, risk_hint
 from .relic_names import display_name
 from .relic_rank import RelicRank, star_step, top_offer
 from .reroll_advice import parse_reroll_text, reroll_line
 from .save_reader import RunState, Sword
 from .shop_advice import best_break_reduction, best_purchase, target_sword
 from .sword_section import sword_verdict
-from .tribute import tribute_status
+from .tribute import choose_tribute, tribute_status
 
 TITLE, NORMAL, GOOD, WARN, DIM = "title", "normal", "good", "warn", "dim"
 ALERT = "alert"  # chữ to, nền đỏ: việc phải làm NGAY
@@ -24,20 +25,19 @@ MERCHANT_SWORD_NAMES = {"sword": "Kiếm Sắt"}
 MAX_STRIKE_STEPS = 5
 
 
-def choose_tribute(swords: list[Sword], need: float, finished: set[int]) -> list[Sword]:
-    """Chọn kiếm để nộp: ưu tiên kiếm đã 'xong' (nên DỪNG), giá trị nhỏ trước, tới khi đủ.
+def _future_ratios(verdicts: dict) -> dict[int, float]:
+    """Tỉ lệ giá trị tương lai mỗi kiếm cho việc chọn kiếm nộp cống.
 
-    Giữ lại kiếm còn tiềm năng; kiếm lớn để dành cho các vòng sau (cống tăng rất nhanh).
+    Kiếm đã 'xong' (kế hoạch/EV nói DỪNG) = 1; còn lại = Plan.ratio, không có kế hoạch thì EV
+    một nhát (>= 1). DỪNG chỉ vì cống KHÔNG tính là 'xong'.
     """
-    done = sorted((s for s in swords if s.serial in finished), key=lambda s: s.value)
-    growing = sorted((s for s in swords if s.serial not in finished), key=lambda s: s.value)
-    chosen, total = [], 0.0
-    for sw in done + growing:
-        if total >= need:
-            break
-        chosen.append(sw)
-        total += sw.value
-    return chosen if total >= need else []
+    ratios: dict[int, float] = {}
+    for serial, v in verdicts.items():
+        if v.plan is not None:
+            ratios[serial] = v.plan.ratio
+        else:
+            ratios[serial] = max(v.one_step.ev_ratio, 1.0) if v.one_step.verdict.startswith("ĐẬP") else 1.0
+    return ratios
 
 
 def _strike_steps(live: list[Sword], verdicts: dict, state: RunState, top: Sword | None,
@@ -76,6 +76,19 @@ def _tomorrow_line(next_quota: float, left: float) -> Line:
     if left <= 0:
         return head + " -> cần kiếm mới / rèn thêm", WARN
     return head + f" -> cần tăng x{next_quota / left:.1f}", WARN
+
+
+def _risk_step(top: Sword | None, verdicts: dict, pace: Pace | None, state: RunState,
+               reserved: set[int]) -> Line | None:
+    """Đẩy/giữ an toàn kiếm chính theo tiến độ; không bao giờ đè quy tắc an toàn cống hôm nay."""
+    v = verdicts.get(top.serial) if top is not None else None
+    if v is None:
+        return None
+    locked = (top.serial in reserved and v.odds.destruction > 0) or "cống" in v.verdict
+    hint = risk_hint(top, v.plan, v.odds, pace, state.ward_charges, locked)
+    if hint is None:
+        return None
+    return hint, (GOOD if hint.startswith("Đang chậm") else WARN)
 
 
 def offered_ids(state: RunState, merchant: list[MerchantItem] | None) -> list[str]:
@@ -126,7 +139,9 @@ def build_steps(state: RunState | None, odds: OddsMap, multiplier: float, quota:
                 merchant: list[MerchantItem] | None = None,
                 fever_strikes: int = DEFAULT_FEVER_STRIKES,
                 next_quota: float = 0.0, reroll_text: str = "",
-                relic_rank: RelicRank | None = None) -> list[Line]:
+                relic_rank: RelicRank | None = None,
+                schedule: tuple[float, ...] = ()) -> list[Line]:
+    """``schedule``: cống các ngày tới (ngày mai trước), do game tính trên campaign giả lập."""
     lines: list[Line] = [("Việc cần làm", TITLE)]
     if state is None:
         return lines + [("Chưa có dữ liệu lượt chơi.", DIM)]
@@ -142,6 +157,13 @@ def build_steps(state: RunState | None, odds: OddsMap, multiplier: float, quota:
             lines.append((f">>> XUẤT THẦN {sw.tag}: ĐẬP LIÊN TỤC! (~{fever_strikes} nhát, "
                           f"không gãy) <<<", ALERT))
 
+    schedule = schedule or ((next_quota,) if next_quota > 0 else ())
+    next_quota = next_quota or (schedule[0] if schedule else 0.0)
+    pace = contract_pace(live, status.need if status else 0.0, schedule, table, multiplier,
+                         fever_strikes)
+    if pace is not None and pace.behind:
+        lines.append(pace_line(pace))
+
     reserved: set[int] = set()
     left_after: float | None = None  # giá trị kiếm còn lại sau khi nộp cống hôm nay
     if status is not None:  # 2. Cống nạp
@@ -151,8 +173,7 @@ def build_steps(state: RunState | None, odds: OddsMap, multiplier: float, quota:
         elif status.shortfall > 0:
             lines.append((f"Thiếu {status.shortfall:,.0f} cống: đập kiếm để tăng giá trị", WARN))
         else:
-            finished = {s for s, v in verdicts.items() if v.verdict.startswith("DỪNG")}
-            chosen = choose_tribute(live, status.need, finished)
+            chosen = choose_tribute(live, status.need, _future_ratios(verdicts))
             if chosen:
                 reserved = {s.serial for s in chosen}
                 ids = ", ".join(s.tag for s in chosen)
@@ -163,6 +184,9 @@ def build_steps(state: RunState | None, odds: OddsMap, multiplier: float, quota:
 
     if next_quota > 0 and left_after is not None:
         lines.append(_tomorrow_line(next_quota, left_after))
+    hint = _risk_step(top, verdicts, pace, state, reserved)
+    if hint is not None:
+        lines.append(hint)
     lines += _strike_steps(live, verdicts, state, top, reserved)  # 3. Đập kiếm
     if top is not None and state.rewind_charges > 0 and odds[top.serial][0].destruction > 0:
         lines.append((f"Nếu {top.tag} gãy: bấm R (Dây Cót) để hồi", DIM))

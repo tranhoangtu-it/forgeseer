@@ -31,16 +31,18 @@ def format_state(state: RunState | None, names: dict[str, str] | None = None,
                  merchant: list[MerchantItem] | None = None,
                  fever_strikes: int = DEFAULT_FEVER_STRIKES,
                  next_quota: float = 0.0, runs_summary: str = "",
-                 relic_rank: RelicRank | None = None) -> list[Line]:
-    """``names``: id relic -> tên; ``odds``/``shop_sim``/``quota``/``grade_odds``/``relic_rank``:
-    chỉ có khi LIVE."""
+                 relic_rank: RelicRank | None = None,
+                 schedule: tuple[float, ...] = ()) -> list[Line]:
+    """``names``: id relic -> tên; ``odds``/``shop_sim``/``quota``/``grade_odds``/``relic_rank``/
+    ``schedule``: chỉ có khi LIVE."""
     if state is None:
         return [("ForgeTax", TITLE), ("Chưa có lượt chơi nào được lưu.", DIM)]
     names = names or {}
     odds = odds or {}
     lines: list[Line] = [("ForgeTax", TITLE)]
     lines += _campaign_lines(state)
-    lines += tribute_lines(state, quota, next_quota)
+    lines += tribute_lines(state, quota, next_quota, schedule, grade_odds, multiplier,
+                           fever_strikes)
     lines += sword_lines(state, odds, multiplier, quota, grade_odds, fever_strikes)
     ctx = _AdviceContext(target_sword(state.swords, odds), odds,
                          shop_sim or ShopSimulation(), multiplier, names)

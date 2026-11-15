@@ -106,7 +106,7 @@ def test_shop_and_merchant_purchases_are_listed():
 def test_choose_tribute_uses_small_finished_swords_first():
     swords = [_sword(1, 9000, 12), _sword(2, 2000, 6), _sword(3, 1500, 5)]
 
-    chosen = choose_tribute(swords, need=3000, finished={1, 2, 3})
+    chosen = choose_tribute(swords, need=3000, ratios={1: 1.0, 2: 1.0, 3: 1.0})
 
     assert [s.serial for s in chosen] == [3, 2]
 
@@ -179,3 +179,39 @@ def test_star_marks_best_purchase_instead_of_duplicating():
 
     assert "★ Mua relic Kim Ghim" in text
     assert text.count("Kim Ghim") == 1
+
+
+def test_behind_pace_is_listed_with_schedule():
+    swords = (_sword(1, 2000, 6),)
+    lines = build_steps(_state(swords), {1: (SAFE, SAFE)}, 1.5, quota=1000,
+                        schedule=(50000.0, 80000.0, 120000.0))
+
+    behind = [line for line in lines if line[0].startswith("Chậm: thiếu")]
+    assert behind and behind[0][1] == "warn"
+    assert "Ngày mai cống 50,000" in _text(lines)
+
+
+def test_behind_pace_pushes_top_sword_with_ward():
+    swords = (_sword(1, 2000, 6),)
+    text = _text(build_steps(_state(swords, ward=1), {1: (RISKY, SAFE)}, 1.5,
+                             schedule=(50000.0,), table=_table()))
+
+    assert "Đang chậm tiến độ → đẩy +6 dưới sàn" in text
+    assert "Vảy Rồng" in text
+
+
+def test_pace_hint_respects_todays_tribute_safety():
+    good_but_risky = SwordOdds.from_permille([100, 20, 80, 700, 100])
+    swords = (_sword(1, 3000, 6),)
+    text = _text(build_steps(_state(swords, ward=1), {1: (good_but_risky, SAFE)}, 1.5,
+                             quota=2500, schedule=(500000.0,), table=_table()))
+
+    assert "Đang chậm tiến độ" not in text
+    assert "Chậm: thiếu" in text
+
+
+def _table():
+    from forgetax_overlay.advisor import GradeOddsTable
+    odds = SwordOdds.from_permille([400, 50, 100, 400, 50])
+    return GradeOddsTable(normal={g: odds for g in range(40)}, fever={g: SAFE for g in range(40)},
+                          valid=True)

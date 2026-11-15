@@ -12,6 +12,7 @@ from dataclasses import dataclass
 
 from .advisor import Advice, GradeOddsTable, SwordOdds, advise
 from .fever_calibration import DEFAULT_FEVER_STRIKES
+from .pace import contract_pace, pace_line, schedule_line
 from .planner import FEVER_THRESHOLD, Plan, plan_sword
 from .save_reader import RunState, Sword
 from .tribute import TributeStatus, tribute_override, tribute_status
@@ -22,18 +23,32 @@ OddsMap = dict[int, tuple[SwordOdds, SwordOdds]]
 MAX_GROUPS_SHOWN = 8
 
 
-def tribute_lines(state: RunState, quota: float, next_quota: float = 0.0) -> list[Line]:
+def tribute_lines(state: RunState, quota: float, next_quota: float = 0.0,
+                  schedule: tuple[float, ...] = (), table: GradeOddsTable | None = None,
+                  multiplier: float = 1.5,
+                  fever_strikes: int = DEFAULT_FEVER_STRIKES) -> list[Line]:
+    """Dòng cống hôm nay + cống các ngày tới + tiến độ (khi biết lịch cống)."""
     status = tribute_status(state, quota)
     if status is None:
         return []
-    tomorrow = f" | ngày mai {next_quota:,.0f}" if next_quota > 0 else ""
+    schedule = schedule or ((next_quota,) if next_quota > 0 else ())
+    tomorrow = f" | ngày mai {schedule[0]:,.0f}" if schedule else ""
     head = (f"Cống: cần {status.quota:,.0f}{tomorrow} | đã nộp {status.delivered:,.0f} | "
             f"kiếm {status.holdings:,.0f}")
     if status.need <= 0:
-        return [(head + " -> ĐÃ ĐỦ", GOOD)]
-    if status.shortfall > 0:
-        return [(head + f" -> THIẾU {status.shortfall:,.0f}", WARN)]
-    return [(head + " -> ĐỦ nếu nộp", GOOD)]
+        lines = [(head + " -> ĐÃ ĐỦ", GOOD)]
+    elif status.shortfall > 0:
+        lines = [(head + f" -> THIẾU {status.shortfall:,.0f}", WARN)]
+    else:
+        lines = [(head + " -> ĐỦ nếu nộp", GOOD)]
+    if len(schedule) > 1:
+        lines.append(("  " + schedule_line(state.round, schedule), DIM))
+    live = [sw for sw in state.swords if sw.is_live]
+    pace = contract_pace(live, status.need, schedule, table, multiplier, fever_strikes)
+    if pace is not None:
+        text, tag = pace_line(pace)
+        lines.append(("  " + text, tag))
+    return lines
 
 
 def _group_key(sw: Sword, odds: OddsMap) -> tuple:

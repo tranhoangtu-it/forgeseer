@@ -188,3 +188,13 @@ def test_relic_rank_section_stars_unsold_shop_offer():
 
 def test_relic_rank_section_hidden_without_simulation():
     assert "Relic giảm gãy" not in _texts(format_state(_state()))
+
+
+def test_tribute_area_shows_schedule_and_pace():
+    lines = format_state(_state(swords=(_sword(value=3000),)), quota=2000,
+                         schedule=(8700.0, 13200.0, 20100.0))
+    text = _texts(lines)
+
+    assert "ngày mai 8,700" in text
+    assert "Cống sắp tới: d8 8.7k, d9 13.2k, d10 20.1k" in text
+    assert "Chậm: thiếu" in text

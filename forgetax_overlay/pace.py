@@ -109,6 +109,14 @@ def evaluate_pace(expected: float, incoming_per_day: float, need_today: float,
                 needed=max(need_today, 0.0) + sum(schedule[:k]), days=k, covered_days=covered)
 
 
+def contract_pace(live: list[Sword], need_today: float, schedule: tuple[float, ...],
+                  table: GradeOddsTable | None, multiplier: float,
+                  fever_strikes: int = DEFAULT_FEVER_STRIKES) -> Pace | None:
+    """Tiến độ khế ước cho các kiếm còn trong tay (None nếu chưa biết cống các ngày tới)."""
+    return evaluate_pace(holdings_expected(live, table, multiplier, fever_strikes),
+                         incoming_per_day(table, multiplier, fever_strikes), need_today, schedule)
+
+
 def pace_line(pace: Pace) -> Line:
     detail = f" (kỳ vọng {compact(pace.available)} / cần {compact(pace.needed)})"
     if pace.behind:

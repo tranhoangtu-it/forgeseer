@@ -168,3 +168,24 @@ def test_script_source_joins_capture_and_relic_rank_files():
     assert "Interceptor.attach" in source
     assert "function collectRelicRank" in source
     assert source.index("findCaptureMethod") < source.index("function collectRelicRank")
+
+
+def test_run_message_with_quota_schedule():
+    live = LiveSource(clock=lambda: 1.0)
+    message = _run_message({"campaign": {}, "swords": []})
+    message["payload"]["quotaSchedule"] = [3350, 4350.0, "x", 9000]
+
+    live.handle_message(message)
+
+    assert live.quota_schedule() == (3350.0, 4350.0)
+
+
+def test_missing_quota_schedule_clears_previous():
+    live = LiveSource(clock=lambda: 1.0)
+    first = _run_message({"campaign": {}, "swords": []})
+    first["payload"]["quotaSchedule"] = [3350]
+    live.handle_message(first)
+
+    live.handle_message(_run_message({"campaign": {"round": 2}, "swords": []}))
+
+    assert live.quota_schedule() == ()

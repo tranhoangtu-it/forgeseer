@@ -50,6 +50,7 @@ class LiveSource:
         self._shop_sim = ShopSimulation()
         self._quota = 0.0
         self._next_quota = 0.0
+        self._quota_schedule: tuple[float, ...] = ()
         self._reroll_text = ""
         self._grade_odds = GradeOddsTable()
         self._relic_rank = RelicRank()
@@ -80,6 +81,11 @@ class LiveSource:
         """Cống ngày mai do hàm của game tính trên campaign giả lập (0 nếu chưa xác minh được)."""
         with self._lock:
             return self._next_quota
+
+    def quota_schedule(self) -> tuple[float, ...]:
+        """Cống các ngày tới (ngày mai trước) do game tính; rỗng nếu chưa xác minh được."""
+        with self._lock:
+            return self._quota_schedule
 
     def reroll_text(self) -> str:
         """Chữ giá đổi lượt trên máy relic ("390 G" / "1 LẦN MIỄN PHÍ"); rỗng ngoài giờ mua sắm."""
@@ -156,6 +162,7 @@ class LiveSource:
             self._reroll_text = reroll if isinstance(reroll, str) else ""
             next_quota = payload.get("nextQuota")
             self._next_quota = float(next_quota) if isinstance(next_quota, (int, float)) else 0.0
+            self._quota_schedule = parse_quota_schedule(payload.get("quotaSchedule"))
             if isinstance(multiplier, (int, float)) and multiplier > 1:
                 self._multiplier = float(multiplier)
 
@@ -201,6 +208,18 @@ class LiveSource:
     def _on_detached(self, reason: str, *_: Any) -> None:
         self._session = None
         self.status = f"Đọc trực tiếp: mất kết nối ({reason})"
+
+
+def parse_quota_schedule(raw: Any) -> tuple[float, ...]:
+    """``[q1, q2, ...]`` -> tuple; dừng ở mục đầu tiên sai định dạng hoặc <= 0."""
+    if not isinstance(raw, list):
+        return ()
+    out: list[float] = []
+    for q in raw:
+        if isinstance(q, bool) or not isinstance(q, (int, float)) or q <= 0:
+            break
+        out.append(float(q))
+    return tuple(out)
 
 
 def _parse_odds(raw: Any) -> OddsMap:
