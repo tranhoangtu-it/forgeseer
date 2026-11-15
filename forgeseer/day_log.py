@@ -72,6 +72,27 @@ def load_day_keys(path: Path = DEFAULT_DAY_LOG) -> set[DayKey]:
     return keys
 
 
+def load_days(path: Path = DEFAULT_DAY_LOG) -> list[DayRecord]:
+    """Every readable day record, in file order; broken lines are skipped."""
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return []
+    days: list[DayRecord] = []
+    for line in lines:
+        try:
+            raw = json.loads(line)
+            days.append(DayRecord(run_id=str(raw["run_id"]), round=int(raw["round"]),
+                                  quota=float(raw.get("quota", 0)),
+                                  delivered=int(raw.get("delivered", 0)),
+                                  holdings=int(raw.get("holdings", 0)),
+                                  top_grade=int(raw.get("top_grade", 0)),
+                                  missed=int(raw.get("missed", 0))))
+        except (json.JSONDecodeError, KeyError, TypeError, ValueError, AttributeError):
+            continue
+    return days
+
+
 def append_day(path: Path, record: DayRecord, keys: set[DayKey]) -> bool:
     """Ghi thêm nếu (run_id, round) chưa có; True nếu đã ghi."""
     if record.key in keys:

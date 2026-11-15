@@ -1,7 +1,8 @@
 """Overlay text in several languages.
 
 Every string shown on the overlay goes through ``t(key, **values)``. Catalogs live in
-``forgeseer/locales/<code>.json`` (flat key -> text, ``str.format`` placeholders). A missing key
+``forgeseer/locales/<code>.json`` (flat key -> text, ``str.format`` placeholders), with the
+optional ``<code>.extra.json`` (settings-window tabs) merged on top. A missing key
 falls back to English, then to the key itself, so a half-finished catalog never crashes.
 
 The active language is picked in this order: ``--lang`` on the command line, the language the
@@ -72,13 +73,19 @@ def choose_language(cli: str | None = None, game: str | None = None,
     return DEFAULT_LANGUAGE
 
 
-@lru_cache(maxsize=None)
-def catalog(lang: str) -> dict[str, str]:
+def _load_catalog_file(path: Path) -> dict[str, str]:
     try:
-        raw = json.loads((LOCALES_DIR / f"{lang}.json").read_text(encoding="utf-8"))
+        raw = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return {}
     return {str(k): str(v) for k, v in raw.items()} if isinstance(raw, dict) else {}
+
+
+@lru_cache(maxsize=None)
+def catalog(lang: str) -> dict[str, str]:
+    """``<lang>.json`` with the optional ``<lang>.extra.json`` (settings-window texts) on top."""
+    return {**_load_catalog_file(LOCALES_DIR / f"{lang}.json"),
+            **_load_catalog_file(LOCALES_DIR / f"{lang}.extra.json")}
 
 
 def set_language(lang: str | None) -> str:

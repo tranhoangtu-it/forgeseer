@@ -108,6 +108,27 @@ def test_legend_fits_width_in_every_language():
         assert all(display_width(text) <= LINE_WIDTH for text, _ in lines), lang
 
 
+def test_every_language_ships_an_extra_catalog_with_the_same_keys():
+    keys = None
+    for lang in SUPPORTED:
+        path = i18n.LOCALES_DIR / f"{lang}.extra.json"
+        extra = json.loads(path.read_text(encoding="utf-8"))
+        keys = keys or set(extra)
+        assert set(extra) == keys, lang
+        assert set(extra) <= set(catalog(lang)), lang  # merged into the catalog
+
+
+def test_extra_catalog_is_merged_over_the_base(tmp_path, monkeypatch):
+    (tmp_path / "en.json").write_text('{"a": "base", "b": "keep"}', encoding="utf-8")
+    (tmp_path / "en.extra.json").write_text('{"a": "extra", "c": "new"}', encoding="utf-8")
+    monkeypatch.setattr(i18n, "LOCALES_DIR", tmp_path)
+    catalog.cache_clear()
+    try:
+        assert catalog("en") == {"a": "extra", "b": "keep", "c": "new"}
+    finally:
+        catalog.cache_clear()
+
+
 def test_display_width_counts_wide_characters_twice():
     assert display_width("abc") == 3
     assert display_width("破壊") == 4
