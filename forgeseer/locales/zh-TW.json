@@ -163,7 +163,7 @@
   "live.detached": "直接讀取: 連線中斷（{reason}）",
   "live.error": "直接讀取錯誤: {error}",
   "live.no_frida": "直接讀取關閉: 未安裝 frida（pip install frida）",
-  "hint.keys": "F7 說明 · F8 隱藏 · F9 移動 · F10 結束",
+  "hint.keys": "F6 設定 · F7 說明 · F8 隱藏 · F9 移動 · F10 結束",
   "hint.drag": "F9: 鎖定位置",
 
   "legend.title": "說明（按F7關閉）",
@@ -190,5 +190,28 @@
   "legend.credits.term": "劍幣 · 重新抽選",
   "legend.credits.meaning": "遺物商店剩餘購買次數（用 +0 劍支付）；商店重新抽選次數。",
   "legend.consumables.term": "龍鱗（Q）· 發條（R）",
-  "legend.consumables.meaning": "裂開的龍鱗擋住下一鎚的破壞；悔恨的發條撤銷上一鎚。"
+  "legend.consumables.meaning": "裂開的龍鱗擋住下一鎚的破壞；悔恨的發條撤銷上一鎚。",
+
+  "settings.heading": "設定",
+  "settings.intro": "選好疊加層的顯示方式後按「開始」。遊戲時此視窗停在工作列：點擊它或按 F6 即可返回。變更立即生效。",
+  "settings.language": "語言",
+  "settings.language_auto": "自動（跟隨遊戲）",
+  "settings.opacity": "不透明度",
+  "settings.font_size": "字級",
+  "settings.panels": "疊加層",
+  "settings.show_details": "詳情面板（左）",
+  "settings.show_todo": "待辦面板（右）",
+  "settings.show_legend": "說明",
+  "settings.live": "從遊戲即時讀取（關閉：僅讀存檔檔案）",
+  "settings.reset_position": "重設疊加層位置",
+  "settings.hotkeys": "快捷鍵",
+  "settings.skip": "下次略過此畫面",
+  "settings.start": "開始",
+  "settings.resume": "返回遊戲",
+  "settings.quit": "結束",
+  "hotkey.f6": "設定（此畫面）",
+  "hotkey.f7": "開關說明",
+  "hotkey.f8": "隱藏/顯示疊加層",
+  "hotkey.f9": "移動疊加層，再按一次鎖定",
+  "hotkey.f10": "結束"
 }

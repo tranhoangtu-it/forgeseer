@@ -163,7 +163,7 @@
   "live.detached": "Ao vivo: conexão perdida ({reason})",
   "live.error": "Erro ao vivo: {error}",
   "live.no_frida": "Ao vivo desligado: frida não instalado (pip install frida)",
-  "hint.keys": "F7 legenda · F8 ocultar · F9 mover · F10 sair",
+  "hint.keys": "F6 configurações · F7 legenda · F8 ocultar · F9 mover · F10 sair",
   "hint.drag": "F9: travar posição",
 
   "legend.title": "Legenda (F7 para fechar)",
@@ -190,5 +190,28 @@
   "legend.credits.term": "Fichas de espada · Renovações",
   "legend.credits.meaning": "Compras restantes na loja de relíquias (pagas com espadas +0); renovações da loja.",
   "legend.consumables.term": "Escama de dragão (Q) · Mecanismo (R)",
-  "legend.consumables.meaning": "A Escama de dragão rachada impede a Quebra no próximo golpe; o Mecanismo do arrependimento desfaz o último golpe."
+  "legend.consumables.meaning": "A Escama de dragão rachada impede a Quebra no próximo golpe; o Mecanismo do arrependimento desfaz o último golpe.",
+
+  "settings.heading": "Configurações",
+  "settings.intro": "Escolha como o overlay aparece e clique em Iniciar. Enquanto você joga, esta janela fica na barra de tarefas: clique nela ou aperte F6 para voltar. As mudanças valem na hora.",
+  "settings.language": "Idioma",
+  "settings.language_auto": "Automático (igual ao jogo)",
+  "settings.opacity": "Opacidade",
+  "settings.font_size": "Tamanho da fonte",
+  "settings.panels": "Overlay",
+  "settings.show_details": "Painel de detalhes (esquerda)",
+  "settings.show_todo": "Painel «O que fazer» (direita)",
+  "settings.show_legend": "Legenda",
+  "settings.live": "Leitura ao vivo do jogo (desligada: só o arquivo de save)",
+  "settings.reset_position": "Redefinir posição do overlay",
+  "settings.hotkeys": "Atalhos",
+  "settings.skip": "Pular esta tela da próxima vez",
+  "settings.start": "Iniciar",
+  "settings.resume": "Voltar ao jogo",
+  "settings.quit": "Sair",
+  "hotkey.f6": "Configurações (esta tela)",
+  "hotkey.f7": "Mostrar/ocultar legenda",
+  "hotkey.f8": "Mostrar/ocultar overlay",
+  "hotkey.f9": "Mover o overlay, aperte de novo para travar",
+  "hotkey.f10": "Sair"
 }

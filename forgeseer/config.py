@@ -12,6 +12,7 @@ from typing import Any
 DEFAULT_CONFIG_FILE = (
     Path(os.environ.get("APPDATA", str(Path.home()))) / "ForgeTaxOverlay" / "config.json"
 )
+DEFAULT_POSITION = (20, 20)  # vị trí khung chi tiết khi chưa lưu / khi bấm "Đặt lại vị trí"
 
 
 def load_config(path: Path = DEFAULT_CONFIG_FILE) -> dict[str, Any]:

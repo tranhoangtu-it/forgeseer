@@ -163,7 +163,7 @@
   "live.detached": "直接读取: 连接断开（{reason}）",
   "live.error": "直接读取出错: {error}",
   "live.no_frida": "直接读取关闭: 未安装 frida（pip install frida）",
-  "hint.keys": "F7 说明 · F8 隐藏 · F9 移动 · F10 退出",
+  "hint.keys": "F6 设置 · F7 说明 · F8 隐藏 · F9 移动 · F10 退出",
   "hint.drag": "F9: 锁定位置",
 
   "legend.title": "说明（按F7关闭）",
@@ -190,5 +190,28 @@
   "legend.credits.term": "剑币 · 刷新",
   "legend.credits.meaning": "遗物商店剩余购买次数（用 +0 剑支付）；商店刷新次数。",
   "legend.consumables.term": "龙鳞（Q）· 发条（R）",
-  "legend.consumables.meaning": "裂开的龙鳞挡住下一锤的破坏；悔恨的发条撤销上一锤。"
+  "legend.consumables.meaning": "裂开的龙鳞挡住下一锤的破坏；悔恨的发条撤销上一锤。",
+
+  "settings.heading": "设置",
+  "settings.intro": "选好叠加层的显示方式后按“开始”。游戏时此窗口停在任务栏：点击它或按 F6 即可返回。更改立即生效。",
+  "settings.language": "语言",
+  "settings.language_auto": "自动（跟随游戏）",
+  "settings.opacity": "不透明度",
+  "settings.font_size": "字号",
+  "settings.panels": "叠加层",
+  "settings.show_details": "详情面板（左）",
+  "settings.show_todo": "待办面板（右）",
+  "settings.show_legend": "说明",
+  "settings.live": "从游戏实时读取（关闭：仅读存档文件）",
+  "settings.reset_position": "重置叠加层位置",
+  "settings.hotkeys": "快捷键",
+  "settings.skip": "下次跳过此界面",
+  "settings.start": "开始",
+  "settings.resume": "返回游戏",
+  "settings.quit": "退出",
+  "hotkey.f6": "设置（此界面）",
+  "hotkey.f7": "开关说明",
+  "hotkey.f8": "隐藏/显示叠加层",
+  "hotkey.f9": "移动叠加层，再按一次锁定",
+  "hotkey.f10": "退出"
 }

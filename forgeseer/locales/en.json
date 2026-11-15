@@ -163,7 +163,7 @@
   "live.detached": "Live: connection lost ({reason})",
   "live.error": "Live error: {error}",
   "live.no_frida": "Live off: frida is not installed (pip install frida)",
-  "hint.keys": "F7 legend · F8 hide · F9 move · F10 quit",
+  "hint.keys": "F6 settings · F7 legend · F8 hide · F9 move · F10 quit",
   "hint.drag": "F9: lock position",
 
   "legend.title": "Legend (F7 to close)",
@@ -190,5 +190,28 @@
   "legend.credits.term": "Relic purchases · Rerolls",
   "legend.credits.meaning": "Purchases left at the relic shop (paid with +0 swords); shop rerolls.",
   "legend.consumables.term": "Dragon Scale (Q) · Rewind (R)",
-  "legend.consumables.meaning": "Cracked Dragon Scale blocks a Break on the next strike; Clockwork of Regret undoes the last strike."
+  "legend.consumables.meaning": "Cracked Dragon Scale blocks a Break on the next strike; Clockwork of Regret undoes the last strike.",
+
+  "settings.heading": "Settings",
+  "settings.intro": "Choose how the overlay looks, then press Start. While you play, this window waits on the taskbar: click it or press F6 to come back. Changes apply right away.",
+  "settings.language": "Language",
+  "settings.language_auto": "Auto (follow the game)",
+  "settings.opacity": "Opacity",
+  "settings.font_size": "Font size",
+  "settings.panels": "Overlay",
+  "settings.show_details": "Details panel (left)",
+  "settings.show_todo": "To do panel (right)",
+  "settings.show_legend": "Legend",
+  "settings.live": "Live reading from the game (off: save file only)",
+  "settings.reset_position": "Reset overlay position",
+  "settings.hotkeys": "Hotkeys",
+  "settings.skip": "Skip this screen next time",
+  "settings.start": "Start",
+  "settings.resume": "Back to the game",
+  "settings.quit": "Quit",
+  "hotkey.f6": "Settings (this screen)",
+  "hotkey.f7": "Legend on/off",
+  "hotkey.f8": "Hide/show the overlay",
+  "hotkey.f9": "Move the overlay, press again to lock",
+  "hotkey.f10": "Quit"
 }

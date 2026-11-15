@@ -163,7 +163,7 @@
   "live.detached": "Đọc trực tiếp: mất kết nối ({reason})",
   "live.error": "Đọc trực tiếp lỗi: {error}",
   "live.no_frida": "Đọc trực tiếp tắt: chưa cài frida (pip install frida)",
-  "hint.keys": "F7 chú giải · F8 ẩn · F9 di chuyển · F10 thoát",
+  "hint.keys": "F6 cài đặt · F7 chú giải · F8 ẩn · F9 di chuyển · F10 thoát",
   "hint.drag": "F9: khóa vị trí",
 
   "legend.title": "Chú giải (F7 để tắt)",
@@ -190,5 +190,28 @@
   "legend.credits.term": "Lượt mua di vật · Lượt đổi hàng",
   "legend.credits.meaning": "Số lượt mua ở cửa hàng di vật (trả bằng kiếm +0); số lần đổi hàng của cửa hàng.",
   "legend.consumables.term": "Vảy Rồng (Q) · Dây Cót (R)",
-  "legend.consumables.meaning": "Vảy Rồng Nứt chặn Gãy ở nhát kế tiếp; Dây Cót Hối Tiếc hoàn tác nhát vừa rồi."
+  "legend.consumables.meaning": "Vảy Rồng Nứt chặn Gãy ở nhát kế tiếp; Dây Cót Hối Tiếc hoàn tác nhát vừa rồi.",
+
+  "settings.heading": "Cài đặt",
+  "settings.intro": "Chọn cách overlay hiển thị rồi bấm Bắt đầu. Khi chơi, cửa sổ này nằm dưới taskbar: bấm vào nó hoặc nhấn F6 để mở lại. Thay đổi có hiệu lực ngay.",
+  "settings.language": "Ngôn ngữ",
+  "settings.language_auto": "Tự động (theo game)",
+  "settings.opacity": "Độ đậm",
+  "settings.font_size": "Cỡ chữ",
+  "settings.panels": "Overlay",
+  "settings.show_details": "Khung chi tiết (trái)",
+  "settings.show_todo": "Khung việc cần làm (phải)",
+  "settings.show_legend": "Chú giải",
+  "settings.live": "Đọc trực tiếp từ game (tắt: chỉ đọc file save)",
+  "settings.reset_position": "Đặt lại vị trí overlay",
+  "settings.hotkeys": "Phím tắt",
+  "settings.skip": "Lần sau bỏ qua màn hình này",
+  "settings.start": "Bắt đầu",
+  "settings.resume": "Quay lại game",
+  "settings.quit": "Thoát",
+  "hotkey.f6": "Cài đặt (màn hình này)",
+  "hotkey.f7": "Bật/tắt chú giải",
+  "hotkey.f8": "Ẩn/hiện overlay",
+  "hotkey.f9": "Di chuyển overlay, nhấn lần nữa để khóa",
+  "hotkey.f10": "Thoát"
 }

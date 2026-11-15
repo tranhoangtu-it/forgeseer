@@ -163,7 +163,7 @@
   "live.detached": "直接読み取り: 接続が切れました（{reason}）",
   "live.error": "直接読み取りエラー: {error}",
   "live.no_frida": "直接読み取りオフ: frida が未インストール（pip install frida）",
-  "hint.keys": "F7 凡例 · F8 隠す · F9 移動 · F10 終了",
+  "hint.keys": "F6 設定 · F7 凡例 · F8 隠す · F9 移動 · F10 終了",
   "hint.drag": "F9: 位置を固定",
 
   "legend.title": "凡例（F7で閉じる）",
@@ -190,5 +190,28 @@
   "legend.credits.term": "剣貨 · 入れ替え",
   "legend.credits.meaning": "遺物の店で買える回数（+0の剣で支払い）と店の入れ替え回数。",
   "legend.consumables.term": "竜鱗（Q）· ぜんまい（R）",
-  "legend.consumables.meaning": "ひび割れた竜鱗は次の一打の破壊を防ぐ。後悔のぜんまいは直前の一打を戻す。"
+  "legend.consumables.meaning": "ひび割れた竜鱗は次の一打の破壊を防ぐ。後悔のぜんまいは直前の一打を戻す。",
+
+  "settings.heading": "設定",
+  "settings.intro": "オーバーレイの表示を選んでから「開始」を押してください。プレイ中このウィンドウはタスクバーにあります。クリックするか F6 で戻れます。変更はすぐに反映されます。",
+  "settings.language": "言語",
+  "settings.language_auto": "自動（ゲームに合わせる）",
+  "settings.opacity": "不透明度",
+  "settings.font_size": "文字サイズ",
+  "settings.panels": "オーバーレイ",
+  "settings.show_details": "詳細パネル（左）",
+  "settings.show_todo": "やることパネル（右）",
+  "settings.show_legend": "凡例",
+  "settings.live": "ゲームから直接読み取る（オフ：セーブファイルのみ）",
+  "settings.reset_position": "オーバーレイの位置をリセット",
+  "settings.hotkeys": "ホットキー",
+  "settings.skip": "次回からこの画面を表示しない",
+  "settings.start": "開始",
+  "settings.resume": "ゲームに戻る",
+  "settings.quit": "終了",
+  "hotkey.f6": "設定（この画面）",
+  "hotkey.f7": "凡例の表示/非表示",
+  "hotkey.f8": "オーバーレイの表示/非表示",
+  "hotkey.f9": "オーバーレイを移動、もう一度押すと固定",
+  "hotkey.f10": "終了"
 }

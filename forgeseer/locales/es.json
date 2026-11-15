@@ -163,7 +163,7 @@
   "live.detached": "En directo: conexión perdida ({reason})",
   "live.error": "Error en directo: {error}",
   "live.no_frida": "En directo desactivado: falta frida (pip install frida)",
-  "hint.keys": "F7 leyenda · F8 ocultar · F9 mover · F10 salir",
+  "hint.keys": "F6 ajustes · F7 leyenda · F8 ocultar · F9 mover · F10 salir",
   "hint.drag": "F9: fijar posición",
 
   "legend.title": "Leyenda (F7 para cerrar)",
@@ -190,5 +190,28 @@
   "legend.credits.term": "Fichas de espada · Renovaciones",
   "legend.credits.meaning": "Compras que te quedan en la tienda de reliquias (se pagan con espadas +0); renovaciones de la tienda.",
   "legend.consumables.term": "Escama de dragón (Q) · Mecanismo (R)",
-  "legend.consumables.meaning": "La Escama de dragón agrietada evita la Rotura del próximo golpe; el Mecanismo del arrepentimiento deshace el último golpe."
+  "legend.consumables.meaning": "La Escama de dragón agrietada evita la Rotura del próximo golpe; el Mecanismo del arrepentimiento deshace el último golpe.",
+
+  "settings.heading": "Ajustes",
+  "settings.intro": "Elige cómo se ve el overlay y pulsa Empezar. Mientras juegas, esta ventana queda en la barra de tareas: haz clic en ella o pulsa F6 para volver. Los cambios se aplican al momento.",
+  "settings.language": "Idioma",
+  "settings.language_auto": "Automático (como el juego)",
+  "settings.opacity": "Opacidad",
+  "settings.font_size": "Tamaño de letra",
+  "settings.panels": "Overlay",
+  "settings.show_details": "Panel de detalles (izquierda)",
+  "settings.show_todo": "Panel «Qué hacer» (derecha)",
+  "settings.show_legend": "Leyenda",
+  "settings.live": "Lectura en directo del juego (desactivada: solo el archivo de guardado)",
+  "settings.reset_position": "Restablecer posición del overlay",
+  "settings.hotkeys": "Atajos",
+  "settings.skip": "Omitir esta pantalla la próxima vez",
+  "settings.start": "Empezar",
+  "settings.resume": "Volver al juego",
+  "settings.quit": "Salir",
+  "hotkey.f6": "Ajustes (esta pantalla)",
+  "hotkey.f7": "Mostrar/ocultar leyenda",
+  "hotkey.f8": "Mostrar/ocultar overlay",
+  "hotkey.f9": "Mover el overlay, pulsa de nuevo para fijarlo",
+  "hotkey.f10": "Salir"
 }

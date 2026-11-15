@@ -1,18 +1,18 @@
-"""ForgeSeer: python -m forgeseer [--once] [--no-live] [--lang vi] [--x 20 --y 20]"""
+"""ForgeSeer: python -m forgeseer [--once] [--no-live] [--no-settings] [--lang vi] [--x 20 --y 20]"""
 from __future__ import annotations
 
 import argparse
 import sys
 from pathlib import Path
 
-from .config import load_config, load_position
+from .config import DEFAULT_CONFIG_FILE, DEFAULT_POSITION, load_config, load_position
 from .formatter import format_state
 from .i18n import SUPPORTED, choose_language, get_language, set_language, t, windows_ui_language
 from .relic_names import BUNDLED_NAMES_FILE, load_relic_names, load_relic_texts
 from .save_reader import DEFAULT_SAVE_DIR, SaveReadError, find_run_save, load_run_state
+from .settings import apply_cli, language_override, load_settings
 
 DEFAULT_POLL_MS = 500
-DEFAULT_POSITION = (20, 20)
 
 
 def _print_once(save_dir: Path, names: dict[str, str]) -> int:
@@ -47,23 +47,27 @@ def main(argv: list[str] | None = None) -> int:
                         help="Print the current state to the console and exit")
     parser.add_argument("--lang", choices=SUPPORTED,
                         help="Overlay language (default: follow the game, then Windows)")
+    parser.add_argument("--no-settings", action="store_true",
+                        help="Skip the settings screen and go straight to the overlay")
     args = parser.parse_args(argv)
 
-    # --once không gắn vào game nên chỉ có --lang hoặc ngôn ngữ Windows.
-    set_language(choose_language(args.lang, load_config().get("game_lang"), windows_ui_language()))
+    settings = apply_cli(load_settings(DEFAULT_CONFIG_FILE), args.lang, args.no_live)
+    # --once không gắn vào game: dùng ngôn ngữ trong cài đặt, game lần trước, hoặc Windows.
+    set_language(choose_language(language_override(settings), load_config().get("game_lang"),
+                                 windows_ui_language()))
     # Tên tự dịch làm nền, đè bằng tên chính thức đã cache từ game (nếu có).
     names = {**load_relic_names(args.relic_names),
              **{k: text.name for k, text in load_relic_texts(lang=get_language()).items()}}
     if args.once:
         return _print_once(args.save_dir, names)
 
-    from .overlay import run_overlay  # import trễ: --once không cần tkinter/Win32
+    from .app import run_app  # import trễ: --once không cần tkinter/Win32
 
     saved_x, saved_y = load_position() or DEFAULT_POSITION
     x = saved_x if args.x is None else args.x
     y = saved_y if args.y is None else args.y
-    run_overlay(args.save_dir, max(args.poll_ms, 100), x, y, names, use_live=not args.no_live,
-                lang=args.lang)
+    run_app(args.save_dir, max(args.poll_ms, 100), x, y, settings, names,
+            show_settings=not (args.no_settings or settings.skip_settings))
     return 0
 
 

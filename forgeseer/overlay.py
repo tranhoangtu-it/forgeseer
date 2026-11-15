@@ -1,110 +1,62 @@
-"""Cửa sổ overlay trong suốt, luôn nằm trên, cho chuột bấm xuyên qua (Windows).
+"""Các khung overlay (chi tiết, việc cần làm, chú giải) và vòng đọc dữ liệu.
 
 Lưu ý: overlay chỉ hiện trên game khi game chạy ở chế độ Windowed/Borderless,
 không hiện được trên chế độ Exclusive Fullscreen.
 """
 from __future__ import annotations
 
-import ctypes
 import time
 import tkinter as tk
-from ctypes import wintypes
 from pathlib import Path
+from typing import Callable
 
-from .config import DEFAULT_CONFIG_FILE, load_config, save_position, update_config
+from .action_plan import build_steps
+from .config import DEFAULT_CONFIG_FILE, DEFAULT_POSITION, load_config, save_position, update_config
 from .day_log import DEFAULT_DAY_LOG, DayTracker, append_day, load_day_keys, observe_day
-from .formatter import DIM, GOOD, NORMAL, TITLE, WARN, format_state
-from .action_plan import ALERT, build_steps
 from .fever_calibration import FeverTracker, load_fever_stats, observe, save_fever_stats
+from .formatter import DIM, NORMAL, WARN, format_state
 from .i18n import choose_language, get_language, set_language, t, windows_ui_language
 from .legend import legend_lines
 from .live_source import LiveSource
 from .merchant_advice import evaluate_merchant, merchant_active
+from .overlay_windows import OverlayFonts, OverlayWindow, key_is_down
 from .relic_names import load_relic_texts
 from .run_log import DEFAULT_RUN_LOG, append_run, load_runs, record_from_state, summary_line
 from .save_reader import RunState, SaveReadError, find_run_save, load_run_state
-from .text_format import SEP, display_width
+from .settings import Settings, language_override, panel_visibility
+from .text_format import SEP
 
-BG = "#101014"
-COLORS = {TITLE: "#f0c060", NORMAL: "#e8e8e8", GOOD: "#7ee08a", WARN: "#ff6b5b", DIM: "#9a9aa8"}
-FONT = ("Consolas", 10)
-ALERT_FONT = ("Consolas", 14, "bold")
-ALERT_BG = "#b01818"
-ALPHA = 0.85
 HOTKEY_POLL_MS = 80
 PANEL_MARGIN = 20  # khoảng cách khung "Việc cần làm" tới mép phải/trên màn hình (px)
 LIVE_FRESH_SECONDS = 3.0  # dữ liệu trực tiếp cũ hơn mức này -> quay về file save
 
-GWL_EXSTYLE = -20
-WS_EX_LAYERED = 0x00080000
-WS_EX_TRANSPARENT = 0x00000020
-WS_EX_TOOLWINDOW = 0x00000080  # ẩn khỏi taskbar / Alt+Tab
-VK_TOGGLE_LEGEND = 0x76  # F7
+VK_SETTINGS, VK_TOGGLE_LEGEND = 0x75, 0x76  # F6, F7
 VK_TOGGLE_VISIBLE, VK_TOGGLE_DRAG, VK_QUIT = 0x77, 0x78, 0x79  # F8, F9, F10
-
-_user32 = ctypes.windll.user32
-_user32.GetWindowLongPtrW.restype = ctypes.c_ssize_t
-_user32.GetWindowLongPtrW.argtypes = [wintypes.HWND, ctypes.c_int]
-_user32.SetWindowLongPtrW.restype = ctypes.c_ssize_t
-_user32.SetWindowLongPtrW.argtypes = [wintypes.HWND, ctypes.c_int, ctypes.c_ssize_t]
-_user32.GetAsyncKeyState.restype = ctypes.c_short
-
-
-def enable_dpi_awareness() -> None:
-    """Chữ sắc nét trên màn hình scale >100%. Bỏ qua nếu Windows không hỗ trợ."""
-    try:
-        ctypes.windll.shcore.SetProcessDpiAwareness(1)
-    except (AttributeError, OSError):
-        pass
-
-
-def _make_text(parent: tk.Misc) -> tk.Text:
-    text = tk.Text(parent, bg=BG, bd=0, highlightthickness=0, font=FONT,
-                   padx=10, pady=8, wrap="none", cursor="arrow")
-    for tag, color in COLORS.items():
-        text.tag_configure(tag, foreground=color)
-    text.tag_configure(TITLE, foreground=COLORS[TITLE], font=FONT + ("bold",))
-    text.tag_configure(ALERT, foreground="#ffffff", background=ALERT_BG, font=ALERT_FONT)
-    text.pack()
-    return text
-
-
-def _fill_text(widget: tk.Text, lines: list[tuple[str, str]]) -> None:
-    widget.configure(state="normal")
-    widget.delete("1.0", "end")
-    for text, tag in lines:
-        widget.insert("end", text + "\n", tag)
-    widget.delete("end-2c", "end-1c")  # bỏ dòng trống cuối
-    width = max(display_width(text) for text, _ in lines)
-    widget.configure(state="disabled", width=width + 1, height=len(lines))
-
-
-def _set_click_through(hwnd: int, window: tk.Misc, enabled: bool) -> None:
-    style = _user32.GetWindowLongPtrW(hwnd, GWL_EXSTYLE)
-    style |= WS_EX_LAYERED | WS_EX_TOOLWINDOW
-    style = style | WS_EX_TRANSPARENT if enabled else style & ~WS_EX_TRANSPARENT
-    _user32.SetWindowLongPtrW(hwnd, GWL_EXSTYLE, style)
-    # Tk tự đặt lại alpha khi đổi style layered -> gán lại cho chắc.
-    window.attributes("-alpha", ALPHA)
 
 
 class Overlay:
-    def __init__(self, root: tk.Tk, save_dir: Path, poll_ms: int, x: int, y: int,
-                 names: dict[str, str] | None = None,
+    def __init__(self, master: tk.Misc, settings: Settings, save_dir: Path, poll_ms: int,
+                 x: int, y: int, names: dict[str, str] | None = None,
                  config_file: Path = DEFAULT_CONFIG_FILE,
-                 live: LiveSource | None = None, lang_override: str | None = None) -> None:
-        self.root = root
-        self.live = live
+                 live_factory: Callable[[], LiveSource] = LiveSource,
+                 on_settings: Callable[[], None] = lambda: None,
+                 on_quit: Callable[[], None] = lambda: None) -> None:
+        self.master = master
+        self.settings = settings
         self.save_dir = save_dir
         self.poll_ms = poll_ms
         self.names = names or {}
-        self.lang_override = lang_override  # --lang: luôn dùng ngôn ngữ này
+        self.config_file = config_file
+        self._live_factory = live_factory
+        self._on_settings = on_settings
+        self._on_quit = on_quit
+        self.live: LiveSource | None = None
         self._system_lang = windows_ui_language()
         # Ngôn ngữ game lần trước: dùng ngay từ đầu, trước khi kết nối được với game.
         self._saved_game_lang = load_config(config_file).get("game_lang")
-        set_language(choose_language(lang_override, self._saved_game_lang, self._system_lang))
+        set_language(choose_language(language_override(settings), self._saved_game_lang,
+                                     self._system_lang))
         self.texts = load_relic_texts(lang=get_language())  # tên chính thức từ lần kết nối trước
-        self.config_file = config_file
         self._fever_tracker = FeverTracker()
         self._fever_stats = load_fever_stats(config_file)
         self._runs = load_runs(DEFAULT_RUN_LOG)
@@ -113,58 +65,81 @@ class Overlay:
         self.state: RunState | None = None
         self.status = t("status.searching")
         self._last_sig: tuple[str, int] | None = None
+        self._last_live_state: RunState | None = None
         self._keys_down: set[int] = set()
-        self._visible = True
-        self._legend_visible = False
+        self._hidden = False  # F8
+        self._legend_on = settings.show_legend  # F7
         self._is_live = False  # True khi đang hiển thị dữ liệu đọc trực tiếp từ game
         self._drag_mode = False
         self._drag_origin = (0, 0)
+        self._running = True
 
-        root.overrideredirect(True)
-        root.attributes("-topmost", True)
-        root.attributes("-alpha", ALPHA)
-        root.configure(bg=BG)
-        root.geometry(f"+{x}+{y}")
-
-        self.text = _make_text(root)
-        self.text.bind("<ButtonPress-1>", self._on_drag_start)
-        self.text.bind("<B1-Motion>", self._on_drag_move)
-
-        # Khung "Việc cần làm" ở góc phải màn hình (luôn bấm xuyên qua được).
-        self.panel = tk.Toplevel(root)
-        self.panel.overrideredirect(True)
-        self.panel.attributes("-topmost", True)
-        self.panel.configure(bg=BG)
-        self.panel_text = _make_text(self.panel)
-
-        # Khung "Chú giải" (F7), ẩn lúc đầu, cũng bấm xuyên qua được.
-        self.legend = tk.Toplevel(root)
-        self.legend.overrideredirect(True)
-        self.legend.attributes("-topmost", True)
-        self.legend.configure(bg=BG)
-        self.legend_text = _make_text(self.legend)
-        _fill_text(self.legend_text, legend_lines())
-
-        root.update_idletasks()
-        self.panel.update_idletasks()
-        self.hwnd = _user32.GetParent(root.winfo_id()) or root.winfo_id()
-        self.panel_hwnd = _user32.GetParent(self.panel.winfo_id()) or self.panel.winfo_id()
-        self._apply_click_through(True)
-        _set_click_through(self.panel_hwnd, self.panel, True)
-        self.legend.update_idletasks()
-        self.legend_hwnd = _user32.GetParent(self.legend.winfo_id()) or self.legend.winfo_id()
-        _set_click_through(self.legend_hwnd, self.legend, True)
-        self._place_legend()
-        self.legend.withdraw()
+        self.fonts = OverlayFonts(master, settings.font_size)
+        self.details = OverlayWindow(master, self.fonts, settings.alpha)
+        self.details.move(x, y)
+        self.details.text.bind("<ButtonPress-1>", self._on_drag_start)
+        self.details.text.bind("<B1-Motion>", self._on_drag_move)
+        self.panel = OverlayWindow(master, self.fonts, settings.alpha)  # "Việc cần làm", góc phải
+        self.legend = OverlayWindow(master, self.fonts, settings.alpha)  # "Chú giải" (F7)
+        self.legend.fill(legend_lines())
+        self._set_live(settings.live)
         self.render()
+        self._update_visibility()
 
-    # ---------- Win32 ----------
-    def _apply_click_through(self, enabled: bool) -> None:
-        _set_click_through(self.hwnd, self.root, enabled)
+    # ---------- cài đặt ----------
+    def apply_settings(self, settings: Settings) -> None:
+        """Áp dụng ngay cài đặt mới (từ màn hình cài đặt) khi overlay đang chạy."""
+        old, self.settings = self.settings, settings
+        if settings.show_legend != old.show_legend:
+            self._legend_on = settings.show_legend
+        if settings.opacity != old.opacity:
+            for window in (self.details, self.panel, self.legend):
+                window.set_alpha(settings.alpha)
+        if settings.font_size != old.font_size:
+            self.fonts.resize(settings.font_size)
+            self.legend.fill(legend_lines())
+        if settings.live != old.live:
+            self._set_live(settings.live)
+        self._update_language()
+        self.render()
+        self._update_visibility()
+
+    def reset_position(self) -> None:
+        self.details.move(*DEFAULT_POSITION)
+        save_position(self.config_file, *DEFAULT_POSITION)
+
+    def shutdown(self) -> None:
+        """Dừng vòng lặp + đọc trực tiếp, nhớ vị trí. Cửa sổ do root hủy."""
+        self._running = False
+        self._save_position()
+        self._set_live(False)
+
+    def _set_live(self, enabled: bool) -> None:
+        if enabled and self.live is None:
+            self.live = self._live_factory()
+            self.live.start()
+        elif not enabled and self.live is not None:
+            self.live.stop()
+            self.live = None
+            self._is_live = False
+            self._last_sig = None  # buộc đọc lại file save ngay
+
+    def _update_visibility(self) -> None:
+        details, todo, legend = panel_visibility(self.settings, self._hidden, self._legend_on)
+        self.details.show(details)
+        self.panel.show(todo)
+        self.legend.show(legend)
+        if legend:
+            self._place_legend()
+
+    # ---------- vòng lặp ----------
+    def start(self) -> None:
+        self.master.after(0, self._poll_save)
+        self.master.after(0, self._poll_hotkeys)
 
     def _key_pressed_once(self, vk: int) -> bool:
         """True đúng một lần mỗi khi phím vừa được nhấn xuống (phát hiện cạnh)."""
-        down = bool(_user32.GetAsyncKeyState(vk) & 0x8000)
+        down = key_is_down(vk)
         was_down = vk in self._keys_down
         if down:
             self._keys_down.add(vk)
@@ -172,56 +147,44 @@ class Overlay:
             self._keys_down.discard(vk)
         return down and not was_down
 
-    # ---------- vòng lặp ----------
-    def start(self) -> None:
-        self.root.after(0, self._poll_save)
-        self.root.after(0, self._poll_hotkeys)
-
     def _poll_hotkeys(self) -> None:
-        if self._key_pressed_once(VK_QUIT):
-            self._save_position()
-            if self.live is not None:
-                self.live.stop()
-            self.root.destroy()
+        if not self._running:
             return
+        if self._key_pressed_once(VK_QUIT):
+            self._on_quit()
+            return
+        if self._key_pressed_once(VK_SETTINGS):
+            self._on_settings()
         if self._key_pressed_once(VK_TOGGLE_VISIBLE):
-            self._visible = not self._visible
-            for window in (self.root, self.panel):
-                if self._visible:
-                    window.deiconify()
-                else:
-                    window.withdraw()
-            self._show_legend(self._visible and self._legend_visible)
+            self._hidden = not self._hidden
+            self._update_visibility()
         if self._key_pressed_once(VK_TOGGLE_LEGEND):
-            self._legend_visible = not self._legend_visible
-            self._show_legend(self._visible and self._legend_visible)
+            self._legend_on = not self._legend_on
+            self._update_visibility()
         if self._key_pressed_once(VK_TOGGLE_DRAG):
             self._drag_mode = not self._drag_mode
-            self._apply_click_through(not self._drag_mode)
+            self.details.set_click_through(not self._drag_mode)
             if not self._drag_mode:  # vừa khóa vị trí -> nhớ cho lần mở sau
                 self._save_position()
             self.render()
-        self.root.after(HOTKEY_POLL_MS, self._poll_hotkeys)
-
-    def _show_legend(self, shown: bool) -> None:
-        if shown:
-            self.legend.deiconify()
-            self._place_legend()
-        else:
-            self.legend.withdraw()
+        self.master.after(HOTKEY_POLL_MS, self._poll_hotkeys)
 
     def _place_legend(self) -> None:
         """Khung chú giải ở giữa mép trên màn hình."""
-        self.legend.update_idletasks()
-        x = (self.legend.winfo_screenwidth() - self.legend.winfo_reqwidth()) // 2
-        self.legend.geometry(f"+{max(x, 0)}+{PANEL_MARGIN}")
+        window = self.legend.window
+        window.update_idletasks()
+        x = (window.winfo_screenwidth() - window.winfo_reqwidth()) // 2
+        self.legend.move(max(x, 0), PANEL_MARGIN)
 
     def _save_position(self) -> None:
-        save_position(self.config_file, self.root.winfo_x(), self.root.winfo_y())
+        save_position(self.config_file, self.details.window.winfo_x(),
+                      self.details.window.winfo_y())
 
     def _poll_save(self) -> None:
+        if not self._running:
+            return
         self._refresh_state()
-        self.root.after(self.poll_ms, self._poll_save)
+        self.master.after(self.poll_ms, self._poll_save)
 
     def _refresh_state(self) -> None:
         if self._refresh_from_live():
@@ -237,7 +200,7 @@ class Overlay:
         state, age = self.live.latest()
         if state is None or age is None or age > LIVE_FRESH_SECONDS:
             return False
-        if state is not getattr(self, "_last_live_state", None):
+        if state is not self._last_live_state:
             self._last_live_state = state
             self.state = state
             self._track_fever(state)
@@ -250,20 +213,24 @@ class Overlay:
         return True
 
     def _follow_game_language(self) -> None:
-        """Đổi ngôn ngữ overlay theo ngôn ngữ game đang dùng (trừ khi có --lang)."""
-        if self.live is None:
-            return
-        game_lang = self.live.language()
+        """Nhớ ngôn ngữ game đang dùng và đổi overlay theo (trừ khi cài đặt chọn sẵn)."""
+        game_lang = self.live.language() if self.live is not None else None
         if game_lang and game_lang != self._saved_game_lang:  # nhớ cho lần mở sau
             self._saved_game_lang = game_lang
             update_config(self.config_file, game_lang=game_lang)
-        lang = choose_language(self.lang_override, game_lang or self._saved_game_lang,
-                               self._system_lang)
-        if lang != get_language():
-            set_language(lang)
-            _fill_text(self.legend_text, legend_lines())
-            if self.legend.winfo_viewable():
-                self._place_legend()
+        self._update_language()
+
+    def _update_language(self) -> None:
+        game_lang = self.live.language() if self.live is not None else None
+        lang = choose_language(language_override(self.settings),
+                               game_lang or self._saved_game_lang, self._system_lang)
+        if lang == get_language():
+            return
+        set_language(lang)
+        self.texts = load_relic_texts(lang=lang)
+        self.legend.fill(legend_lines())
+        if self.legend.window.winfo_viewable():
+            self._place_legend()
 
     def _track_fever(self, state: RunState) -> None:
         """Hiệu chỉnh số nhát mỗi đợt Xuất Thần từ dữ liệu trực tiếp (bản chụp ~300ms)."""
@@ -340,33 +307,22 @@ class Overlay:
                              summary_line(self._runs), relic_rank, schedule)
         hint = t("hint.drag") if self._drag_mode else t("hint.keys")
         lines = lines + [("", NORMAL), (self.status, DIM), (hint, WARN if self._drag_mode else DIM)]
-        _fill_text(self.text, lines)
+        self.details.fill(lines)
         steps = build_steps(self.state, odds, multiplier, quota, grade_odds, shop_sim, names, merchant,
                             fever_strikes, next_quota, reroll_text, relic_rank, schedule)
-        _fill_text(self.panel_text, steps)
-        self.panel.update_idletasks()  # đặt khung "Việc cần làm" sát mép phải màn hình
-        x = self.panel.winfo_screenwidth() - self.panel.winfo_reqwidth() - PANEL_MARGIN
-        self.panel.geometry(f"+{x}+{PANEL_MARGIN}")
+        self.panel.fill(steps)
+        window = self.panel.window
+        window.update_idletasks()  # đặt khung "Việc cần làm" sát mép phải màn hình
+        self.panel.move(window.winfo_screenwidth() - window.winfo_reqwidth() - PANEL_MARGIN,
+                        PANEL_MARGIN)
 
     # ---------- kéo thả khi bật F9 ----------
     def _on_drag_start(self, event: tk.Event) -> None:
-        self._drag_origin = (event.x_root - self.root.winfo_x(), event.y_root - self.root.winfo_y())
+        window = self.details.window
+        self._drag_origin = (event.x_root - window.winfo_x(), event.y_root - window.winfo_y())
 
     def _on_drag_move(self, event: tk.Event) -> None:
         if not self._drag_mode:
             return
         dx, dy = self._drag_origin
-        self.root.geometry(f"+{event.x_root - dx}+{event.y_root - dy}")
-
-
-def run_overlay(save_dir: Path, poll_ms: int, x: int, y: int,
-                names: dict[str, str] | None = None, use_live: bool = True,
-                lang: str | None = None) -> None:
-    enable_dpi_awareness()
-    live = LiveSource() if use_live else None
-    if live is not None:
-        live.start()
-    root = tk.Tk()
-    root.title("ForgeSeer")
-    Overlay(root, save_dir, poll_ms, x, y, names, live=live, lang_override=lang).start()
-    root.mainloop()
+        self.details.move(event.x_root - dx, event.y_root - dy)

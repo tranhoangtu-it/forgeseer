@@ -163,7 +163,7 @@
   "live.detached": "직접 읽기: 연결 끊김 ({reason})",
   "live.error": "직접 읽기 오류: {error}",
   "live.no_frida": "직접 읽기 꺼짐: frida 미설치 (pip install frida)",
-  "hint.keys": "F7 범례 · F8 숨기기 · F9 이동 · F10 종료",
+  "hint.keys": "F6 설정 · F7 범례 · F8 숨기기 · F9 이동 · F10 종료",
   "hint.drag": "F9: 위치 고정",
 
   "legend.title": "범례 (F7로 닫기)",
@@ -190,5 +190,28 @@
   "legend.credits.term": "검 화폐 · 새로고침",
   "legend.credits.meaning": "유물 상점에서 남은 구매 횟수 (+0 검으로 지불); 상점 새로고침 횟수.",
   "legend.consumables.term": "용비늘 (Q) · 태엽 (R)",
-  "legend.consumables.meaning": "금 간 용비늘은 다음 타격의 파괴를 막고, 후회의 태엽은 직전 타격을 되돌림."
+  "legend.consumables.meaning": "금 간 용비늘은 다음 타격의 파괴를 막고, 후회의 태엽은 직전 타격을 되돌림.",
+
+  "settings.heading": "설정",
+  "settings.intro": "오버레이 표시 방식을 고른 뒤 시작을 누르세요. 플레이 중에는 이 창이 작업 표시줄에 있습니다. 클릭하거나 F6을 누르면 다시 열립니다. 변경 사항은 바로 적용됩니다.",
+  "settings.language": "언어",
+  "settings.language_auto": "자동 (게임 언어)",
+  "settings.opacity": "불투명도",
+  "settings.font_size": "글자 크기",
+  "settings.panels": "오버레이",
+  "settings.show_details": "상세 패널 (왼쪽)",
+  "settings.show_todo": "할 일 패널 (오른쪽)",
+  "settings.show_legend": "범례",
+  "settings.live": "게임에서 실시간 읽기 (끄면 저장 파일만)",
+  "settings.reset_position": "오버레이 위치 초기화",
+  "settings.hotkeys": "단축키",
+  "settings.skip": "다음부터 이 화면 건너뛰기",
+  "settings.start": "시작",
+  "settings.resume": "게임으로 돌아가기",
+  "settings.quit": "종료",
+  "hotkey.f6": "설정 (이 화면)",
+  "hotkey.f7": "범례 켜기/끄기",
+  "hotkey.f8": "오버레이 숨기기/보이기",
+  "hotkey.f9": "오버레이 이동, 다시 누르면 고정",
+  "hotkey.f10": "종료"
 }

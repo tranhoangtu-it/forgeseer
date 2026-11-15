@@ -163,7 +163,7 @@
   "live.detached": "Live: Verbindung verloren ({reason})",
   "live.error": "Live-Fehler: {error}",
   "live.no_frida": "Live aus: frida nicht installiert (pip install frida)",
-  "hint.keys": "F7 Legende · F8 ausblenden · F9 verschieben · F10 beenden",
+  "hint.keys": "F6 Einstellungen · F7 Legende · F8 ausblenden · F9 verschieben · F10 beenden",
   "hint.drag": "F9: Position fixieren",
 
   "legend.title": "Legende (F7 schließt)",
@@ -190,5 +190,28 @@
   "legend.credits.term": "Schwertmarken · Neu würfeln",
   "legend.credits.meaning": "Käufe im Reliktladen (bezahlt mit +0-Schwertern); wie oft der Laden neu würfeln kann.",
   "legend.consumables.term": "Drachenschuppe (Q) · Uhrwerk (R)",
-  "legend.consumables.meaning": "Die Gesprungene Drachenschuppe verhindert Bruch beim nächsten Schlag; das Uhrwerk der Reue macht den letzten Schlag rückgängig."
+  "legend.consumables.meaning": "Die Gesprungene Drachenschuppe verhindert Bruch beim nächsten Schlag; das Uhrwerk der Reue macht den letzten Schlag rückgängig.",
+
+  "settings.heading": "Einstellungen",
+  "settings.intro": "Lege fest, wie das Overlay aussieht, und drücke Start. Während du spielst, wartet dieses Fenster in der Taskleiste: klicke darauf oder drücke F6, um zurückzukehren. Änderungen gelten sofort.",
+  "settings.language": "Sprache",
+  "settings.language_auto": "Automatisch (wie das Spiel)",
+  "settings.opacity": "Deckkraft",
+  "settings.font_size": "Schriftgröße",
+  "settings.panels": "Overlay",
+  "settings.show_details": "Detailbereich (links)",
+  "settings.show_todo": "Zu-tun-Bereich (rechts)",
+  "settings.show_legend": "Legende",
+  "settings.live": "Direkt aus dem Spiel lesen (aus: nur Spielstand-Datei)",
+  "settings.reset_position": "Overlay-Position zurücksetzen",
+  "settings.hotkeys": "Tastenkürzel",
+  "settings.skip": "Diesen Bildschirm nächstes Mal überspringen",
+  "settings.start": "Start",
+  "settings.resume": "Zurück zum Spiel",
+  "settings.quit": "Beenden",
+  "hotkey.f6": "Einstellungen (dieser Bildschirm)",
+  "hotkey.f7": "Legende ein/aus",
+  "hotkey.f8": "Overlay aus-/einblenden",
+  "hotkey.f9": "Overlay verschieben, erneut drücken zum Fixieren",
+  "hotkey.f10": "Beenden"
 }
