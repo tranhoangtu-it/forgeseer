@@ -1,0 +1,42 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Cài phụ thuộc
+        run: python -m pip install --upgrade pip pytest frida pyinstaller
+
+      - name: Chạy test
+        run: python -m pytest -q
+
+      - name: Đóng gói ForgeSeer.exe
+        run: >
+          pyinstaller --noconfirm --onefile --windowed --name ForgeSeer
+          --add-data "forgeseer/*.js;forgeseer"
+          --add-data "forgeseer/relic_names.json;forgeseer"
+          --collect-all frida
+          run_forgeseer.py
+
+      - name: Nén bản phát hành
+        shell: pwsh
+        run: Compress-Archive -Path dist/ForgeSeer.exe, README.md, LICENSE -DestinationPath "ForgeSeer-${{ github.ref_name }}-windows.zip"
+
+      - name: Tạo GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ForgeSeer-${{ github.ref_name }}-windows.zip
+          body_path: docs/release-notes-${{ github.ref_name }}.md
