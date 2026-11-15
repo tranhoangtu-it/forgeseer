@@ -4,7 +4,7 @@ Trạng thái: (grade, tích lực Xuất Thần, số nhát còn xét). Mỗi n
 game ở grade đó, tích lực +1. Khi tích lực đạt ngưỡng, nhát kế tiếp vào Xuất Thần: một đợt
 ``fever_strikes`` nhát dùng tỉ lệ Xuất Thần (không gãy), sau đó tích lực về 0.
 
-Giả định (ghi rõ vì chưa xác minh tuyệt đối):
+Mấy giả định chưa kiểm chứng hết:
 - Ngưỡng 10 nhát lấy từ hướng dẫn trong game ("Rèn đủ mười nhát...").
 - Xuất Thần tính theo thời gian; ``fever_strikes`` = số nhát trung bình người chơi đập kịp
   (hiệu chỉnh từ chính người chơi, xem fever_calibration).
