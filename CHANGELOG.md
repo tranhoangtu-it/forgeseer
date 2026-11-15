@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.2.0 (2026-11-16)
 
 - Simulation tab in the settings window. It replays the rest of your run 2,000 times (or as many
   as fit in about a second) with the game's own odds and tribute schedule and compares four ways
