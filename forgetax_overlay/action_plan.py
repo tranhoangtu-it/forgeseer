@@ -192,9 +192,12 @@ def build_steps(state: RunState | None, odds: OddsMap, multiplier: float, quota:
     if next_quota > 0 and left_after is not None:
         lines += _tomorrow_lines(next_quota, left_after)
     hint = _risk_step(top, verdicts, pace, state, reserved)
+    hold_back = set(reserved)
     if hint is not None:
         lines.append(hint)
-    lines += _strike_steps(live, verdicts, state, top, reserved)  # 3. Đập kiếm
+        if top is not None and "chơi an toàn" in hint[0]:
+            hold_back.add(top.serial)  # đã khuyên đừng mạo hiểm -> không hiện bước "Đập" mâu thuẫn
+    lines += _strike_steps(live, verdicts, state, top, hold_back)  # 3. Đập kiếm
     if top is not None and state.rewind_charges > 0 and odds[top.serial][0].destruction > 0:
         lines.append((f"Nếu {top.tag} gãy: bấm R (Dây Cót) để hồi", DIM))
 
