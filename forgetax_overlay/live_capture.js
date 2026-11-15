@@ -311,17 +311,15 @@ function simulateShop(roomObj, multiplier) {
   return { shopSim: sim, gradeOdds: gradeOddsTable(campaignObj, swords, multiplier) };
 }
 
-// ---------- cống ngày mai ----------
+// ---------- cống các ngày tới (forecastSchedule ở live_quota_schedule.js) ----------
 // ForgeCampaign.$Gf() (instance, 0 tham số, double) = cống phải nộp của campaign (đã trừ
 // tributeCredit, relic Khế Ước Trọn Đời...). Gọi trên campaign GIẢ LẬP tạo từ JSON với
 // round+1 và tributeCredit = nextTributeCredit. Tự kiểm: campaign giả lập của hôm nay phải
-// cho đúng `quota` của phòng rèn, lệch -> không gửi (0).
+// cho đúng `quota` của phòng rèn, lệch -> không gửi.
 const QUOTA_METHOD = '$Gf';
 const campaignClass = klass('Assembly-CSharp.dll', '', 'ForgeCampaign');
 const quotaMethod = api.method_from_name(campaignClass, Memory.allocUtf8String(QUOTA_METHOD), 0);
 const QUOTA_TOLERANCE = 0.5;
-let lastForecastKey = '';
-let lastForecast = 0;
 
 function fakeCampaign(campaign, overrides) {
   const json = api.string_new(Memory.allocUtf8String(JSON.stringify({ ...campaign, ...overrides })));
@@ -330,20 +328,6 @@ function fakeCampaign(campaign, overrides) {
 
 function quotaOf(fake) {
   return invoke(quotaMethod, fake, []).add(16).readDouble();  // double trả về dạng boxed
-}
-
-function forecastQuota(roomObj, quota) {
-  if (quotaMethod.isNull()) return 0;
-  const campaignObj = roomObj.add(CAMPAIGN_OFF).readPointer();
-  const campaign = JSON.parse(readManagedString(invoke(toJson, NULL, [campaignObj])));
-  const key = JSON.stringify([campaign.round, campaign.tributeCredit, campaign.nextTributeCredit,
-                              campaign.relics, quota]);
-  if (key === lastForecastKey) return lastForecast;
-  lastForecastKey = key;
-  const today = quotaOf(fakeCampaign(campaign, {}));
-  lastForecast = Math.abs(today - quota) > QUOTA_TOLERANCE ? 0 : quotaOf(fakeCampaign(campaign, {
-    round: campaign.round + 1, tributeCredit: campaign.nextTributeCredit || 0, nextTributeCredit: 0 }));
-  return lastForecast;
 }
 
 // ---------- giá đổi lượt máy relic ----------
@@ -449,8 +433,10 @@ Interceptor.attach(update.readPointer(), {
       const rank = collectRelicRank(args[0], extra.multiplier);  // live_relic_rank.js
       if (json && (key !== lastJson || changed || rank)) {
         lastJson = key;
+        const schedule = forecastSchedule(args[0], quota);  // live_quota_schedule.js
         const message = { kind: 'run', json, odds: extra.odds, multiplier: extra.multiplier, quota,
-                          nextQuota: forecastQuota(args[0], quota), rerollText: reroll };
+                          nextQuota: schedule.length ? schedule[0] : 0, quotaSchedule: schedule,
+                          rerollText: reroll };
         if (changed) {
           message.shopSim = changed.shopSim;
           if (changed.gradeOdds) message.gradeOdds = changed.gradeOdds;

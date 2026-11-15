@@ -167,6 +167,7 @@ def test_script_source_joins_capture_and_relic_rank_files():
 
     assert "Interceptor.attach" in source
     assert "function collectRelicRank" in source
+    assert "function forecastSchedule" in source
     assert source.index("findCaptureMethod") < source.index("function collectRelicRank")
 
 

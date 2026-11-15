@@ -26,7 +26,8 @@ PROCESS_NAME = "ForgeTax.exe"
 # Nối thành MỘT script Frida theo thứ tự: live_capture.js định nghĩa helper dùng chung + hook
 # Update; các file sau dùng lại helper đó (cùng phạm vi top-level).
 SCRIPT_FILES = (Path(__file__).with_name("live_capture.js"),
-                Path(__file__).with_name("live_relic_rank.js"))
+                Path(__file__).with_name("live_relic_rank.js"),
+                Path(__file__).with_name("live_quota_schedule.js"))
 RETRY_SECONDS = 3.0
 
 
