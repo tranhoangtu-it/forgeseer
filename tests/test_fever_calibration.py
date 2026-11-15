@@ -1,7 +1,7 @@
-from forgetax_overlay.fever_calibration import (
+from forgeseer.fever_calibration import (
     DEFAULT_FEVER_STRIKES, FeverStats, FeverTracker, load_fever_stats, observe, save_fever_stats,
 )
-from forgetax_overlay.save_reader import Sword
+from forgeseer.save_reader import Sword
 
 
 def _sword(serial=1, strikes=10, fever=0.0, broken=False) -> Sword:

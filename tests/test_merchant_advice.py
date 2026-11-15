@@ -1,8 +1,8 @@
 from dataclasses import replace
 
-from forgetax_overlay.advisor import GradeOddsTable, SwordOdds
-from forgetax_overlay.merchant_advice import evaluate_merchant, merchant_active
-from forgetax_overlay.save_reader import MerchantOffer, RunState, Sword
+from forgeseer.advisor import GradeOddsTable, SwordOdds
+from forgeseer.merchant_advice import evaluate_merchant, merchant_active
+from forgeseer.save_reader import MerchantOffer, RunState, Sword
 
 RISKY = SwordOdds.from_permille([350, 30, 240, 330, 50])
 SAFE = SwordOdds.from_permille([0, 50, 150, 700, 100])

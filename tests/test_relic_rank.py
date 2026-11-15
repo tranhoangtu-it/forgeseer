@@ -1,4 +1,4 @@
-from forgetax_overlay.relic_rank import (
+from forgeseer.relic_rank import (
     CONDITIONAL_IDS, RelicRank, parse_relic_rank, rank_relics, relic_rank_lines, star_step, top_offer,
 )
 

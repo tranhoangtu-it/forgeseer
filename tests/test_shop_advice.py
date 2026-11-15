@@ -1,6 +1,6 @@
-from forgetax_overlay.advisor import ShopSimulation, SwordOdds
-from forgetax_overlay.save_reader import Sword
-from forgetax_overlay.shop_advice import (
+from forgeseer.advisor import ShopSimulation, SwordOdds
+from forgeseer.save_reader import Sword
+from forgeseer.shop_advice import (
     best_break_reduction, best_drop, buy_line, drop_line, grade_line,
 )
 

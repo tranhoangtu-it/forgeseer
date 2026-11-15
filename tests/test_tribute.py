@@ -1,6 +1,6 @@
-from forgetax_overlay.advisor import SwordOdds
-from forgetax_overlay.save_reader import Sword
-from forgetax_overlay.tribute import TributeStatus, choose_tribute, tribute_override
+from forgeseer.advisor import SwordOdds
+from forgeseer.save_reader import Sword
+from forgeseer.tribute import TributeStatus, choose_tribute, tribute_override
 
 RISKY = SwordOdds.from_permille([300, 50, 100, 500, 50])
 SAFE = SwordOdds.from_permille([0, 50, 150, 700, 100])

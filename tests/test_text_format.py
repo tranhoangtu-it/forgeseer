@@ -1,8 +1,8 @@
-from forgetax_overlay.advisor import SwordOdds
-from forgetax_overlay.formatter import format_state
-from forgetax_overlay.reroll_advice import RerollCost, reroll_line
-from forgetax_overlay.save_reader import RunState, Sword
-from forgetax_overlay.text_format import (
+from forgeseer.advisor import SwordOdds
+from forgeseer.formatter import format_state
+from forgeseer.reroll_advice import RerollCost, reroll_line
+from forgeseer.save_reader import RunState, Sword
+from forgeseer.text_format import (
     LINE_WIDTH, fmt_dec, fmt_int, fmt_pct, fmt_ratio, wrap_line, wrap_lines,
 )
 

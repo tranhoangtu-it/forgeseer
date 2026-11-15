@@ -1,7 +1,7 @@
 # ForgeTax Overlay – tài liệu bàn giao
 
 Overlay (Python + tkinter, Windows) hiển thị trạng thái lượt chơi ForgeTax và gợi ý chiến thuật.
-Chạy: `cd E:\tool-game && pythonw -m forgetax_overlay` (`--no-live` chỉ đọc file save, `--once` in console).
+Chạy: `cd E:\tool-game && pythonw -m forgeseer` (`--no-live` chỉ đọc file save, `--once` in console).
 Test: `python -m pytest -q` (pytest, `pyproject.toml` đặt `pythonpath=["."]`).
 Phím: F7 bật/tắt khung "Chú giải", F8 ẩn/hiện, F9 kéo/khóa vị trí (lưu `%APPDATA%\ForgeTaxOverlay\config.json`), F10 thoát.
 Khởi động lại sau khi sửa: dừng tiến trình `pythonw` đang chạy overlay rồi chạy lại lệnh trên.
@@ -18,7 +18,7 @@ Khởi động lại sau khi sửa: dừng tiến trình `pythonw` đang chạy 
   khung trái cách phần bằng dòng trống; khung phải mỗi bước một dòng, chi tiết ở dòng phụ.
   Thuật ngữ mới trên UI -> thêm giải thích vào `legend.py`.
 
-## Kiến trúc (`forgetax_overlay/`)
+## Kiến trúc (`forgeseer/`)
 | File | Vai trò |
 |---|---|
 | `save_reader.py` | Parse JSON save → `RunState`, `Sword`, `Relic`, `Offer`, `MerchantOffer`. `Sword.tag` = "+N vị trí". |

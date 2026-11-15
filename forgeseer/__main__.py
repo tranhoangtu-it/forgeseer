@@ -1,4 +1,4 @@
-"""Điểm vào: ``python -m forgetax_overlay [--once] [--x 20 --y 20]``."""
+"""Điểm vào: ``python -m forgeseer [--once] [--x 20 --y 20]``."""
 from __future__ import annotations
 
 import argparse
@@ -31,7 +31,7 @@ def _print_once(save_dir: Path, names: dict[str, str]) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="forgetax_overlay", description=__doc__)
+    parser = argparse.ArgumentParser(prog="forgeseer", description=__doc__)
     parser.add_argument("--save-dir", type=Path, default=DEFAULT_SAVE_DIR,
                         help="Thư mục Save của ForgeTax")
     parser.add_argument("--x", type=int, help="Vị trí ngang overlay (px); mặc định: vị trí đã lưu")

@@ -4,7 +4,7 @@ import time
 
 import pytest
 
-from forgetax_overlay.save_reader import (
+from forgeseer.save_reader import (
     SaveReadError,
     find_run_save,
     parse_run_save,
@@ -123,7 +123,7 @@ def test_find_run_save_returns_none_when_missing(tmp_path):
 
 
 def test_sword_tag_uses_visible_grade_and_location():
-    from forgetax_overlay.save_reader import PLACE_RACK, Sword
+    from forgeseer.save_reader import PLACE_RACK, Sword
     base = dict(serial=3, grade=8, value=11250, peak=11250, strikes=17, success_streak=0,
                 normal_hits=10, normal_successes=3, heated=False, broken=False, active=True,
                 rack=1, damage_count=1, fever_remaining=0.0)
@@ -137,7 +137,7 @@ def test_sword_tag_uses_visible_grade_and_location():
 
 def test_run_id_read_from_campaign():
     import json as _json
-    from forgetax_overlay.save_reader import parse_run_save as _parse
+    from forgeseer.save_reader import parse_run_save as _parse
     text = _json.dumps({"version": 1, "checksum": "",
                         "payload": _json.dumps({"campaign": {"anonymousRunId": "r1"}})})
 
@@ -145,7 +145,7 @@ def test_run_id_read_from_campaign():
 
 
 def test_display_sort_key_puts_anvil_sword_first_then_by_value():
-    from forgetax_overlay.save_reader import PLACE_ANVIL, PLACE_RACK, Sword, display_sort_key
+    from forgeseer.save_reader import PLACE_ANVIL, PLACE_RACK, Sword, display_sort_key
     base = dict(grade=5, strikes=1, success_streak=0, normal_hits=1, normal_successes=1,
                 heated=False, broken=False, active=True, rack=0, damage_count=0,
                 fever_remaining=0.0)

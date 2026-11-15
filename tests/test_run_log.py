@@ -1,7 +1,7 @@
 import json
 
-from forgetax_overlay.run_log import RunRecord, append_run, load_runs, record_from_state, summary_line
-from forgetax_overlay.save_reader import Relic, RunState
+from forgeseer.run_log import RunRecord, append_run, load_runs, record_from_state, summary_line
+from forgeseer.save_reader import Relic, RunState
 
 
 def _state(**overrides) -> RunState:

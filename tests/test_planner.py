@@ -1,7 +1,7 @@
 import pytest
 
-from forgetax_overlay.advisor import SwordOdds
-from forgetax_overlay.planner import FEVER_THRESHOLD, plan_sword
+from forgeseer.advisor import SwordOdds
+from forgeseer.planner import FEVER_THRESHOLD, plan_sword
 
 SAFE = SwordOdds.from_permille([0, 50, 150, 700, 100])
 DEADLY = SwordOdds.from_permille([900, 10, 30, 50, 10])

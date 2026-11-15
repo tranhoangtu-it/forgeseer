@@ -1,6 +1,6 @@
 import json
 
-from forgetax_overlay.relic_names import (
+from forgeseer.relic_names import (
     RelicText,
     display_name,
     load_relic_names,

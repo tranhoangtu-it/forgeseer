@@ -1,4 +1,4 @@
-from forgetax_overlay.reroll_advice import RerollCost, parse_reroll_text, reroll_line
+from forgeseer.reroll_advice import RerollCost, parse_reroll_text, reroll_line
 
 
 def test_parse_paid_and_free_reroll_text():

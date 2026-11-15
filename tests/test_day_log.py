@@ -1,8 +1,8 @@
 import json
 
-from forgetax_overlay.day_log import (DayTracker, append_day, day_record, load_day_keys,
+from forgeseer.day_log import (DayTracker, append_day, day_record, load_day_keys,
                                       observe_day)
-from forgetax_overlay.save_reader import RunState, Sword
+from forgeseer.save_reader import RunState, Sword
 
 
 def _sword(serial, value, grade) -> Sword:

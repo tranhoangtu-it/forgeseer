@@ -1,4 +1,4 @@
-from forgetax_overlay.config import load_config, load_position, save_position
+from forgeseer.config import load_config, load_position, save_position
 
 
 def test_position_round_trip(tmp_path):

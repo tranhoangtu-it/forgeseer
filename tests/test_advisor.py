@@ -1,6 +1,6 @@
 import pytest
 
-from forgetax_overlay.advisor import SwordOdds, advise
+from forgeseer.advisor import SwordOdds, advise
 
 
 def _odds(destruction, damage, hold, success, great) -> SwordOdds:

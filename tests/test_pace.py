@@ -1,8 +1,8 @@
-from forgetax_overlay.advisor import GradeOddsTable, SwordOdds
-from forgetax_overlay.pace import (evaluate_pace, pace_detail, holdings_expected, pace_line,
+from forgeseer.advisor import GradeOddsTable, SwordOdds
+from forgeseer.pace import (evaluate_pace, pace_detail, holdings_expected, pace_line,
                                    risk_hint, schedule_lines)
-from forgetax_overlay.planner import Plan
-from forgetax_overlay.save_reader import Sword
+from forgeseer.planner import Plan
+from forgeseer.save_reader import Sword
 
 SAFE = SwordOdds.from_permille([0, 50, 150, 700, 100])
 RISKY = SwordOdds.from_permille([300, 50, 100, 500, 50])

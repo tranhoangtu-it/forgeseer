@@ -1,8 +1,8 @@
-from forgetax_overlay.action_plan import build_steps, choose_tribute
-from forgetax_overlay.advisor import ShopSimulation, SwordOdds
-from forgetax_overlay.merchant_advice import MerchantItem
-from forgetax_overlay.relic_rank import parse_relic_rank
-from forgetax_overlay.save_reader import MerchantOffer, Offer, RunState, Sword
+from forgeseer.action_plan import build_steps, choose_tribute
+from forgeseer.advisor import ShopSimulation, SwordOdds
+from forgeseer.merchant_advice import MerchantItem
+from forgeseer.relic_rank import parse_relic_rank
+from forgeseer.save_reader import MerchantOffer, Offer, RunState, Sword
 
 RISKY = SwordOdds.from_permille([350, 30, 240, 330, 50])
 SAFE = SwordOdds.from_permille([0, 50, 150, 700, 100])
@@ -213,7 +213,7 @@ def test_pace_hint_respects_todays_tribute_safety():
 
 
 def _table():
-    from forgetax_overlay.advisor import GradeOddsTable
+    from forgeseer.advisor import GradeOddsTable
     odds = SwordOdds.from_permille([400, 50, 100, 400, 50])
     return GradeOddsTable(normal={g: odds for g in range(40)}, fever={g: SAFE for g in range(40)},
                           valid=True)

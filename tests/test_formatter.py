@@ -1,7 +1,7 @@
-from forgetax_overlay.advisor import ShopSimulation
-from forgetax_overlay.formatter import format_state
-from forgetax_overlay.relic_rank import parse_relic_rank
-from forgetax_overlay.save_reader import Offer, Relic, RunState, Sword
+from forgeseer.advisor import ShopSimulation
+from forgeseer.formatter import format_state
+from forgeseer.relic_rank import parse_relic_rank
+from forgeseer.save_reader import Offer, Relic, RunState, Sword
 
 
 def _sword(**overrides) -> Sword:
@@ -90,7 +90,7 @@ def test_consumables_count_shown_when_present():
 
 
 def test_sword_odds_line_shows_verdict_and_uses_fever_odds():
-    from forgetax_overlay.advisor import SwordOdds
+    from forgeseer.advisor import SwordOdds
     normal = SwordOdds.from_permille([359, 42, 62, 496, 41])
     fever = SwordOdds.from_permille([0, 65, 97, 774, 64])
     calm = _sword(serial=1, fever_remaining=0.0)
@@ -115,7 +115,7 @@ def test_shop_items_show_descriptions():
 
 
 def test_shop_simulation_shows_effect_on_most_valuable_sword():
-    from forgetax_overlay.advisor import SwordOdds
+    from forgeseer.advisor import SwordOdds
     now = SwordOdds.from_permille([359, 42, 62, 496, 41])
     better = SwordOdds.from_permille([250, 42, 62, 600, 46])
     sword = _sword(serial=11, value=500000)
@@ -129,7 +129,7 @@ def test_shop_simulation_shows_effect_on_most_valuable_sword():
 
 
 def test_shop_simulation_reports_no_odds_change():
-    from forgetax_overlay.advisor import SwordOdds
+    from forgeseer.advisor import SwordOdds
     now = SwordOdds.from_permille([359, 42, 62, 496, 41])
     sword = _sword(serial=11, value=500000)
     state = _state(shopping=True, swords=(sword,), offers=(Offer("coin", 2, False),))
@@ -141,7 +141,7 @@ def test_shop_simulation_reports_no_odds_change():
 
 
 def test_relic_section_shows_drop_advice():
-    from forgetax_overlay.advisor import SwordOdds
+    from forgeseer.advisor import SwordOdds
     now = SwordOdds.from_permille([359, 42, 62, 496, 41])
     worse = SwordOdds.from_permille([450, 42, 62, 410, 36])
     sword = _sword(serial=11, value=500000)

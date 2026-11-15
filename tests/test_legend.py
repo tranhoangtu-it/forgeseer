@@ -1,5 +1,5 @@
-from forgetax_overlay.legend import legend_lines
-from forgetax_overlay.text_format import LINE_WIDTH
+from forgeseer.legend import legend_lines
+from forgeseer.text_format import LINE_WIDTH
 
 
 def _text():
