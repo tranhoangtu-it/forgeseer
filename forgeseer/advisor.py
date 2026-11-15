@@ -12,6 +12,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Sequence
 
+from .i18n import t
+
 PERMILLE = 1000.0
 
 
@@ -58,7 +60,9 @@ class GradeOddsTable:
 @dataclass(frozen=True)
 class Advice:
     ev_ratio: float  # giá trị kỳ vọng sau 1 nhát / giá trị hiện tại
-    verdict: str
+    verdict: str     # chữ hiển thị theo ngôn ngữ đang dùng
+    strike: bool = False
+    safe: bool = False  # nhát không thể gãy
 
 
 def advise(odds: SwordOdds, multiplier: float) -> Advice:
@@ -67,9 +71,7 @@ def advise(odds: SwordOdds, multiplier: float) -> Advice:
           + odds.hold
           + odds.damage / multiplier)
     if ev <= 1.0:
-        verdict = "DỪNG"
-    elif odds.destruction <= 0.0:
-        verdict = "ĐẬP (an toàn)"
-    else:
-        verdict = "ĐẬP"
-    return Advice(ev_ratio=ev, verdict=verdict)
+        return Advice(ev_ratio=ev, verdict=t("verdict.stop"))
+    if odds.destruction <= 0.0:
+        return Advice(ev_ratio=ev, verdict=t("verdict.strike_safe"), strike=True, safe=True)
+    return Advice(ev_ratio=ev, verdict=t("verdict.strike"), strike=True)

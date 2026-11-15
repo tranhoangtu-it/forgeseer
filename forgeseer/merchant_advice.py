@@ -13,6 +13,7 @@ from dataclasses import dataclass
 
 from .advisor import GradeOddsTable, SwordOdds
 from .fever_calibration import DEFAULT_FEVER_STRIKES
+from .i18n import t
 from .planner import plan_sword
 from .save_reader import MerchantOffer, RunState
 from .shop_advice import target_sword
@@ -51,27 +52,29 @@ def _worth(offer: MerchantOffer, state: RunState, odds: OddsMap, multiplier: flo
         plan = (plan_sword(offer.grade, 0, table.normal, table.fever, multiplier, fever_strikes)
                 if table is not None and table.valid else None)
         if plan is None:
-            return base, f"giá trị gốc {fmt_int(base)}"
-        return base * plan.ratio, f"kỳ vọng ~{fmt_int(base * plan.ratio)} nếu rèn tối ưu"
+            return base, t("merchant.base_value", value=fmt_int(base))
+        return base * plan.ratio, t("merchant.forged_ev", value=fmt_int(base * plan.ratio))
     if offer.id == "ward" and top is not None:
         p = odds[top.serial][0].destruction
-        return top.value * p, f"cứu ~{fmt_int(top.value * p)} cho kiếm {top.tag} (Gãy {fmt_pct(p)} mỗi nhát)"
+        return top.value * p, t("merchant.ward_note", value=fmt_int(top.value * p), tag=top.tag,
+                                pct=fmt_pct(p))
     if offer.id == "rewind" and top is not None:
         if odds[top.serial][0].destruction <= 0:
-            return 0.0, f"kiếm {top.tag} chưa có rủi ro Gãy"
-        return float(top.value), f"bảo hiểm tới {fmt_int(top.value)} cho kiếm {top.tag} (dùng sau khi gãy)"
+            return 0.0, t("merchant.rewind_no_risk", tag=top.tag)
+        return float(top.value), t("merchant.rewind_note", value=fmt_int(top.value), tag=top.tag)
     return None, ""
 
 
 def _verdict(worth: float | None, price: float, wallet: int) -> str:
+    """Chữ hiển thị; so sánh với ``t("merchant.buy")`` / ``t("merchant.no_gold")`` để biết loại."""
     if price > wallet:
-        return "thiếu vàng"
+        return t("merchant.no_gold")
     if worth is None:
-        return "xem mô tả"
+        return t("merchant.see_description")
     ratio = worth / price if price > 0 else float("inf")
     if ratio >= BUY_RATIO:
-        return "MUA"
-    return "cân nhắc" if ratio >= CONSIDER_RATIO else "bỏ qua"
+        return t("merchant.buy")
+    return t("merchant.consider") if ratio >= CONSIDER_RATIO else t("merchant.skip")
 
 
 def evaluate_merchant(state: RunState, odds: OddsMap, multiplier: float,
@@ -83,7 +86,7 @@ def evaluate_merchant(state: RunState, odds: OddsMap, multiplier: float,
             continue
         worth, note = _worth(offer, state, odds, multiplier, table, fever_strikes)
         items.append(MerchantItem(offer, worth, note, _verdict(worth, offer.price, state.wallet)))
-    buyable = [i for i in items if i.verdict == "MUA" and i.ratio is not None]
+    buyable = [i for i in items if i.verdict == t("merchant.buy") and i.ratio is not None]
     if buyable:
         best = max(buyable, key=lambda i: i.ratio)
         items = [MerchantItem(i.offer, i.worth, i.note, i.verdict, best=i is best) for i in items]

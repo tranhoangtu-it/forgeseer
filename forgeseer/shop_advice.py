@@ -6,6 +6,7 @@ So sánh chính làm trên thanh kiếm giá trị nhất (thanh đang gánh r�
 from __future__ import annotations
 
 from .advisor import ShopSimulation, SwordOdds, advise
+from .i18n import t
 from .relic_names import display_name
 from .save_reader import Sword
 from .text_format import ARROW, SEP, fmt_pct, fmt_ratio
@@ -33,9 +34,10 @@ def _ev(o: SwordOdds, multiplier: float) -> float:
 
 def _delta_text(before: SwordOdds, after: SwordOdds, multiplier: float) -> str:
     return SEP.join((
-        f"Gãy {fmt_pct(before.destruction)}{ARROW}{fmt_pct(after.destruction)}",
-        f"Thành công {fmt_pct(before.success)}{ARROW}{fmt_pct(after.success)}",
-        f"kỳ vọng {fmt_ratio(_ev(before, multiplier))}{ARROW}{fmt_ratio(_ev(after, multiplier))}"))
+        f"{t('outcome.break')} {fmt_pct(before.destruction)}{ARROW}{fmt_pct(after.destruction)}",
+        f"{t('outcome.success')} {fmt_pct(before.success)}{ARROW}{fmt_pct(after.success)}",
+        f"{t('word.ev')} {fmt_ratio(_ev(before, multiplier))}{ARROW}"
+        f"{fmt_ratio(_ev(after, multiplier))}"))
 
 
 def _tag(before: SwordOdds, after: SwordOdds, multiplier: float) -> str:
@@ -80,10 +82,10 @@ def buy_line(offer_id: str, target: Sword | None, odds: OddsMap, sim: ShopSimula
     if found is None:
         return None
     relic_id, after = found
-    prefix = (f"      Nếu mua (bỏ {display_name(relic_id, names)}): " if relic_id
-              else f"      Nếu mua, kiếm {target.tag}: ")
+    prefix = "      " + (t("shop.if_buy_swap", name=display_name(relic_id, names)) if relic_id
+                         else t("shop.if_buy", tag=target.tag))
     if _unchanged(before, after):
-        return f"{prefix}tỉ lệ không đổi", DIM
+        return prefix + t("shop.odds_unchanged"), DIM
     return prefix + _delta_text(before, after, multiplier), _tag(before, after, multiplier)
 
 
@@ -106,11 +108,11 @@ def drop_line(relic_id: str, target: Sword | None, odds: OddsMap, sim: ShopSimul
     if after is None:
         return None
     before = odds[target.serial][0]
-    mark = f"{SEP}← nên bỏ nhất" if relic_id == best else ""
+    mark = SEP + t("shop.best_drop") if relic_id == best else ""
     if _unchanged(before, after):
-        return f"      Nếu bỏ: tỉ lệ không đổi (có thể bỏ){mark}", DIM
+        return "      " + t("shop.drop_unchanged") + mark, DIM
     ev0, ev1 = _ev(before, multiplier), _ev(after, multiplier)
-    return (f"      Nếu bỏ: kỳ vọng {fmt_ratio(ev0)}{ARROW}{fmt_ratio(ev1)}{mark}",
+    return ("      " + t("shop.drop_ev", before=fmt_ratio(ev0), after=fmt_ratio(ev1)) + mark,
             WARN if ev1 < ev0 else GOOD)
 
 
@@ -144,8 +146,8 @@ def grade_line(offer_id: str, target: Sword | None, sim: ShopSimulation,
     grades = [g for g in sorted(after) if g in sim.grade_base]
     if not grades:
         return None
-    parts = [f"ở cấp +{g}: gãy {fmt_pct(sim.grade_base[g].destruction)}{ARROW}"
-             f"{fmt_pct(after[g].destruction)}" for g in grades]
+    parts = [t("shop.at_grade", grade=g, before=fmt_pct(sim.grade_base[g].destruction),
+               after=fmt_pct(after[g].destruction)) for g in grades]
     better = any(after[g].destruction < sim.grade_base[g].destruction - ODDS_EPSILON for g in grades)
     worse = any(after[g].destruction > sim.grade_base[g].destruction + ODDS_EPSILON for g in grades)
     return "      " + SEP.join(parts), GOOD if better and not worse else WARN if worse else DIM

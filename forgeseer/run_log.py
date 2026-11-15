@@ -11,6 +11,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
+from .i18n import t
 from .save_reader import RunState
 from .text_format import SEP
 
@@ -81,12 +82,13 @@ def append_run(path: Path, record: RunRecord, existing: list[RunRecord]) -> bool
 
 
 def _describe(r: RunRecord) -> str:
-    return f"ngày {r.round}{' THẮNG' if r.won else ''}, cấp cao nhất +{r.highest_grade}"
+    won = " " + t("runs.won") if r.won else ""
+    return t("runs.describe", day=r.round, won=won, grade=r.highest_grade)
 
 
 def summary_line(runs: list[RunRecord]) -> str:
     if not runs:
         return ""
     best = max(runs, key=lambda r: (r.won, r.round, r.highest_grade, r.gold_earned))
-    return (f"Đã chơi {len(runs)} lượt{SEP}tốt nhất: {_describe(best)}"
-            f"{SEP}gần nhất: {_describe(runs[-1])}")
+    return SEP.join((t("runs.played", count=len(runs)), t("runs.best", run=_describe(best)),
+                     t("runs.latest", run=_describe(runs[-1]))))

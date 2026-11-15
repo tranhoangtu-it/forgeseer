@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from .advisor import SwordOdds
+from .i18n import t
 from .relic_names import display_name
 from .text_format import ARROW, SEP, fmt_pct
 
@@ -110,13 +111,13 @@ def _owned_lines(rank: RelicRank, names: dict[str, str]) -> list[Line]:
         removed = after.get(PRIMARY_GRADE)
         if base is None or removed is None or removed.destruction - base.destruction <= ODDS_EPSILON:
             continue
-        lines.append((f"  (đang có) {display_name(rid, names)}: nếu bỏ, Gãy ở cấp "
-                      f"+{PRIMARY_GRADE}: {_pct(base, removed)}", DIM))
+        lines.append(("  " + t("rank.owned", name=display_name(rid, names), grade=PRIMARY_GRADE,
+                                 change=_pct(base, removed)), DIM))
     return lines
 
 
 def conditional_lines(names: dict[str, str]) -> list[Line]:
-    text = ("Di vật có điều kiện (không mô phỏng được): "
+    text = (t("rank.conditional") + " "
             + ", ".join(display_name(rid, names) for rid in CONDITIONAL_IDS))
     return [(f"  {row}", DIM) for row in textwrap.wrap(text, LINE_WIDTH)]
 
@@ -126,15 +127,15 @@ def relic_rank_lines(rank: RelicRank | None, names: dict[str, str],
     """Khung "Relic giảm gãy"; ★ = món đang bán. Rỗng khi chưa có mô phỏng (không LIVE)."""
     if rank is None or not rank.baseline:
         return []
-    lines: list[Line] = [("Di vật giảm Gãy (tỉ lệ Gãy ở cấp +8 / +12 / +16):", TITLE),
-                         ("  Chỉ tính hiệu ứng cố định · ★ = đang bán", DIM)]
+    lines: list[Line] = [(t("rank.title"), TITLE), ("  " + t("rank.note"), DIM)]
     if rank.shelf_full:
-        lines.append(("  Hết ô di vật: mua thêm thì phải bỏ 1 món", DIM))
+        lines.append(("  " + t("rank.shelf_full"), DIM))
     for r in rank_relics(rank):
         offered = r.id in offer_ids
         star = "★ " if offered else ""
         tag = GOOD if offered else NORMAL
-        lines += [(f"  {star}{display_name(r.id, names)}", tag), (f"      Gãy {_deltas(r)}", DIM)]
+        lines += [(f"  {star}{display_name(r.id, names)}", tag),
+                  (f"      {t('outcome.break')} {_deltas(r)}", DIM)]
     return lines + _owned_lines(rank, names) + conditional_lines(names)
 
 
@@ -144,7 +145,8 @@ def star_step(rank: RelicRank | None, offer_ids: list[str], names: dict[str, str
     best = top_offer(rank, offer_ids)
     if best is None or PRIMARY_GRADE not in best.after:
         return []
-    shelf = f"{SEP}hết ô: bỏ 1 món" if rank is not None and rank.shelf_full else ""
-    return [(f"★ Mua di vật {display_name(best.id, names)}", GOOD),
-            (f"   Gãy ở cấp +{PRIMARY_GRADE}: "
-             f"{_pct(best.before[PRIMARY_GRADE], best.after[PRIMARY_GRADE])}{shelf}", DIM)]
+    shelf = SEP + t("rank.shelf_full_short") if rank is not None and rank.shelf_full else ""
+    return [("★ " + t("step.buy_relic", name=display_name(best.id, names)), GOOD),
+            ("   " + t("rank.break_at", grade=PRIMARY_GRADE,
+                       change=_pct(best.before[PRIMARY_GRADE], best.after[PRIMARY_GRADE])) + shelf,
+             DIM)]

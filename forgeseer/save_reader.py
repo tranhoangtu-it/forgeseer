@@ -11,6 +11,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from .i18n import t
+
 DEFAULT_SAVE_DIR = (
     Path(os.environ.get("USERPROFILE", str(Path.home())))
     / "AppData" / "LocalLow" / "DefaultCompany" / "ForgeTax" / "Save"
@@ -76,14 +78,14 @@ class Sword:
     def where(self) -> str:
         """Vị trí nhìn thấy được trong game (serial nội bộ không hiện trong game)."""
         if self.place == PLACE_RACK and self.rack >= 0:
-            return f"giá ô {self.rack + 1}"
+            return t("place.rack", slot=self.rack + 1)
         if self.place == PLACE_FLOOR:
-            return "dưới sàn"
+            return t("place.floor")
         if self.place == PLACE_ANVIL:
-            return "trên đe"
+            return t("place.anvil")
         if self.place == PLACE_TRIBUTE:
-            return "bàn cống"
-        return "đang cầm"  # các mã còn lại: trên tay / trong lò
+            return t("place.tribute")
+        return t("place.held")  # các mã còn lại: trên tay / trong lò
 
     @property
     def tag(self) -> str:

@@ -10,11 +10,14 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+from .i18n import t
 from .text_format import fmt_int
 
 GOOD, DIM = "good", "dim"
 Line = tuple[str, str]
-FREE_MARKERS = ("MIỄN PHÍ", "FREE")
+# Chữ "miễn phí" trên máy relic ở mọi ngôn ngữ của game (khóa rework.free_reroll).
+FREE_MARKERS = ("MIỄN PHÍ", "FREE", "KOSTENLOS", "GRATIS", "GRÁTIS", "無料", "免费", "免費",
+                "БЕСПЛАТНО", "무료")
 PLENTIFUL_GOLD_FACTOR = 10  # ví >= 10 lần giá đổi lượt -> coi là dư vàng
 _PRICE = re.compile(r"(\d[\d,.]*)\s*G\b")
 
@@ -38,8 +41,7 @@ def reroll_line(cost: RerollCost | None, wallet: int, has_good_offer: bool) -> L
     if cost is None or has_good_offer:
         return None
     if cost.free:
-        return "Đổi hàng di vật (miễn phí): không món nào có lợi", GOOD
+        return t("reroll.free"), GOOD
     if cost.price > 0 and wallet >= cost.price * PLENTIFUL_GOLD_FACTOR:
-        return (f"Đổi hàng di vật ({fmt_int(cost.price)} G, đang dư vàng): "
-                "không món nào có lợi", DIM)
+        return t("reroll.paid", price=fmt_int(cost.price)), DIM
     return None

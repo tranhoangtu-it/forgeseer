@@ -28,6 +28,7 @@ jobs:
           pyinstaller --noconfirm --onefile --windowed --name ForgeSeer
           --add-data "forgeseer/*.js;forgeseer"
           --add-data "forgeseer/relic_names.json;forgeseer"
+          --add-data "forgeseer/locales/*.json;forgeseer/locales"
           --collect-all frida
           run_forgeseer.py
 

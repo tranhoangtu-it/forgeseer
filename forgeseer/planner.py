@@ -18,6 +18,7 @@ from functools import lru_cache
 
 from .advisor import SwordOdds
 from .fever_calibration import DEFAULT_FEVER_STRIKES
+from .i18n import t
 
 FEVER_THRESHOLD = 10
 HORIZON = 30          # số nhát (tính cả đợt Xuất Thần là 1 bước) tối đa được xét
@@ -29,8 +30,9 @@ GradeOdds = dict[int, SwordOdds]
 @dataclass(frozen=True)
 class Plan:
     ratio: float            # giá trị kỳ vọng khi chơi tối ưu / giá trị hiện tại
-    verdict: str            # "ĐẬP" hoặc "DỪNG"
+    verdict: str            # "ĐẬP" hoặc "DỪNG" (theo ngôn ngữ đang dùng)
     strikes_to_fever: int   # số nhát thường nữa thì vào Xuất Thần
+    strike: bool = False
 
 
 def _transitions(o: SwordOdds, g: int) -> list[tuple[float, int]]:
@@ -90,5 +92,6 @@ def plan_sword(grade: int, charge: int, normal: GradeOdds, fever: GradeOdds,
     best, strike = _model(grade, normal, fever, multiplier, fever_strikes, safe_only)
     c0 = min(max(charge, 0), FEVER_THRESHOLD)
     value = best(grade, c0, horizon)
-    verdict = "ĐẬP" if strike(grade, c0, horizon) > 1.0 + EPSILON else "DỪNG"
-    return Plan(ratio=value, verdict=verdict, strikes_to_fever=FEVER_THRESHOLD - c0)
+    go = strike(grade, c0, horizon) > 1.0 + EPSILON
+    return Plan(ratio=value, verdict=t("verdict.strike" if go else "verdict.stop"),
+                strikes_to_fever=FEVER_THRESHOLD - c0, strike=go)

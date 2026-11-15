@@ -6,9 +6,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .action_plan import MERCHANT_SWORD_NAMES, offered_ids
+from .action_plan import merchant_name, offered_ids
 from .advisor import GradeOddsTable, ShopSimulation, SwordOdds
 from .fever_calibration import DEFAULT_FEVER_STRIKES
+from .i18n import t
 from .merchant_advice import MerchantItem
 from .relic_names import display_name
 from .relic_rank import RelicRank, rank_relics, relic_rank_lines
@@ -40,7 +41,7 @@ def format_state(state: RunState | None, names: dict[str, str] | None = None,
     """``names``: id di vật -> tên; ``odds``/``shop_sim``/``quota``/``grade_odds``/``relic_rank``/
     ``schedule``: chỉ có khi đọc trực tiếp từ game."""
     if state is None:
-        return [("ForgeTax", TITLE), ("Chưa có lượt chơi nào được lưu.", DIM)]
+        return [("ForgeTax", TITLE), (t("state.no_run"), DIM)]
     names = names or {}
     odds = odds or {}
     ctx = _AdviceContext(target_sword(state.swords, odds), odds,
@@ -77,16 +78,17 @@ def join_sections(sections: list[list[Line]]) -> list[Line]:
 def _merchant_lines(items: list[MerchantItem], names: dict[str, str],
                     starred: set[str]) -> list[Line]:
     """``starred``: id nằm trong top di vật giảm gãy -> thêm "★"."""
-    lines: list[Line] = [("Thương nhân ma:", TITLE)]
+    lines: list[Line] = [(t("merchant.title"), TITLE)]
     for item in items:
-        name = MERCHANT_SWORD_NAMES.get(item.offer.id) or display_name(item.offer.id, names)
+        name = merchant_name(item.offer.id, names)
         if item.offer.id in starred and not item.offer.sold:
             name = f"★ {name}"
-        ratio = f" (đáng {fmt_ratio(item.ratio, 1)} giá)" if item.ratio is not None else ""
-        mark = f"{SEP}← mua trước" if item.best else ""
-        tag = GOOD if item.verdict == "MUA" else WARN if item.verdict == "thiếu vàng" else DIM
-        lines.append((f"  {name}{SEP}giá {fmt_int(item.offer.price)} G → {item.verdict}"
-                      f"{ratio}{mark}", tag))
+        ratio = t("merchant.worth", ratio=fmt_ratio(item.ratio, 1)) if item.ratio is not None else ""
+        mark = SEP + t("merchant.buy_first") if item.best else ""
+        tag = (GOOD if item.verdict == t("merchant.buy")
+               else WARN if item.verdict == t("merchant.no_gold") else DIM)
+        lines.append((f"  {name}{SEP}" + t("merchant.price", price=fmt_int(item.offer.price))
+                      + f" → {item.verdict}{ratio}{mark}", tag))
         if item.note:
             lines.append((f"      {item.note}", DIM))
     return lines
@@ -95,21 +97,25 @@ def _merchant_lines(items: list[MerchantItem], names: dict[str, str],
 def _campaign_lines(s: RunState) -> list[Line]:
     rounds_left = max(s.deadline_round - s.round, 0)
     lines: list[Line] = [
-        (f"Ngày {s.round}/{s.deadline_round} (còn {rounds_left} ngày){SEP}Vàng: {fmt_int(s.wallet)}",
-         GOOD),
+        (t("campaign.day", day=s.round, deadline=s.deadline_round, left=rounds_left) + SEP
+         + t("campaign.gold", gold=fmt_int(s.wallet)), GOOD),
     ]
     if s.pending_tribute > 0:
-        lines.append((f"Cống đang chờ: {fmt_int(s.pending_tribute)}", NORMAL))
+        lines.append((t("campaign.pending", value=fmt_int(s.pending_tribute)), NORMAL))
         if s.pending_tribute > s.wallet:
-            lines.append((f"Thiếu {fmt_int(s.pending_tribute - s.wallet)} vàng để nộp cống!", WARN))
-    lines.append((f"Cống đã nộp đủ: {s.successful_tributes} lần{SEP}Lỡ: {s.missed_tributes}",
+            lines.append((t("campaign.pending_short", gold=fmt_int(s.pending_tribute - s.wallet)),
+                          WARN))
+    lines.append((t("campaign.tributes", done=s.successful_tributes) + SEP
+                  + t("campaign.missed", count=s.missed_tributes),
                   WARN if s.missed_tributes else NORMAL))
-    lines.append((f"Vảy Rồng: {s.ward_charges}{SEP}Dây Cót: {s.rewind_charges}{SEP}"
-                  f"Lượt mua di vật: {s.sword_credits}{SEP}Lượt đổi hàng: {s.rerolls}", NORMAL))
+    lines.append((SEP.join((t("campaign.ward", count=s.ward_charges),
+                            t("campaign.rewind", count=s.rewind_charges),
+                            t("campaign.credits", count=s.sword_credits),
+                            t("campaign.rerolls", count=s.rerolls))), NORMAL))
     if s.consumables:
-        lines.append((f"Vật phẩm tiêu hao: {s.consumables}", NORMAL))
+        lines.append((t("campaign.consumables", count=s.consumables), NORMAL))
     if s.finished:
-        lines.append(("Kết thúc: THẮNG" if s.won else "Kết thúc: THUA", GOOD if s.won else WARN))
+        lines.append((t("campaign.won") if s.won else t("campaign.lost"), GOOD if s.won else WARN))
     return lines
 
 
@@ -126,10 +132,10 @@ class _AdviceContext:
 def _relic_lines(s: RunState, names: dict[str, str], ctx: _AdviceContext) -> list[Line]:
     if not s.relics:
         return []
-    lines: list[Line] = [(f"Di vật đang có ({len(s.relics)}):", TITLE)]
+    lines: list[Line] = [(t("relics.title", count=len(s.relics)), TITLE)]
     best = best_drop(ctx.target, ctx.odds, ctx.sim, ctx.multiplier)
     for r in s.relics:
-        rank = f" (bậc {r.rank})" if r.rank > 1 else ""
+        rank = t("relics.rank", rank=r.rank) if r.rank > 1 else ""
         lines.append((f"  {display_name(r.id, names)}{rank}", NORMAL))
         advice = drop_line(r.id, ctx.target, ctx.odds, ctx.sim, ctx.multiplier, best)
         if advice is not None:
@@ -150,10 +156,11 @@ def _wrap(text: str, width: int = DESCRIPTION_WIDTH) -> list[str]:
 
 def _shop_lines(s: RunState, names: dict[str, str], descriptions: dict[str, str],
                 ctx: _AdviceContext) -> list[Line]:
-    lines: list[Line] = [("Cửa hàng di vật:", TITLE)]
+    lines: list[Line] = [(t("shop.title"), TITLE)]
     for o in s.offers:
-        status = " (đã mua)" if o.sold else ""
-        lines.append((f"  {display_name(o.id, names)}{SEP}giá {fmt_int(o.price)}{status}",
+        status = t("shop.sold") if o.sold else ""
+        lines.append((f"  {display_name(o.id, names)}{SEP}"
+                      + t("shop.price", price=fmt_int(o.price)) + status,
                       DIM if o.sold else GOOD))
         if not o.sold:
             lines += [(f"      {row}", DIM) for row in _wrap(descriptions.get(o.id, ""))]
@@ -168,11 +175,14 @@ def _shop_lines(s: RunState, names: dict[str, str], descriptions: dict[str, str]
 
 def _stats_lines(s: RunState, fever_strikes: int) -> list[Line]:
     minutes, seconds = divmod(int(s.play_seconds), 60)
+    events = ((t("outcome.great"), s.great_events), (t("outcome.hold"), s.hold_events),
+              (t("outcome.damage"), s.damage_events), (t("word.fever"), s.fever_events),
+              (t("outcome.break"), s.broken_swords))
     return [
-        ("Thống kê lượt này:", TITLE),
-        (f"  Xuất sắc {s.great_events}{SEP}Không đổi {s.hold_events}{SEP}"
-         f"Hư tổn {s.damage_events}{SEP}Xuất Thần {s.fever_events}{SEP}Gãy {s.broken_swords}", DIM),
-        (f"  Tổng vàng {fmt_int(s.gold_earned)}{SEP}cấp cao nhất +{s.highest_grade}"
-         f"{SEP}thời gian {minutes}:{seconds:02d}", DIM),
-        (f"  Xuất Thần: ~{fever_strikes} nhát/lần", DIM),
+        (t("stats.title"), TITLE),
+        ("  " + SEP.join(f"{name} {count}" for name, count in events), DIM),
+        ("  " + SEP.join((t("stats.gold", gold=fmt_int(s.gold_earned)),
+                          t("stats.best_grade", grade=s.highest_grade),
+                          t("stats.time", time=f"{minutes}:{seconds:02d}"))), DIM),
+        ("  " + t("stats.fever", count=fever_strikes), DIM),
     ]

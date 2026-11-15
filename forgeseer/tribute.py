@@ -8,6 +8,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from .advisor import SwordOdds
+from .i18n import t
 from .save_reader import RunState, Sword
 from .text_format import fmt_pct
 
@@ -74,9 +75,12 @@ def choose_tribute(swords: list[Sword], need: float, ratios: dict[int, float]) -
     return sorted((s for i, s in enumerate(swords) if best_mask >> i & 1), key=lambda s: s.value)
 
 
-def tribute_override(sword: Sword, odds: SwordOdds, status: TributeStatus | None,
-                     multiplier: float) -> str | None:
-    """Gợi ý theo cống cho thanh kiếm; None nếu cống không làm đổi quyết định."""
+def tribute_decision(sword: Sword, odds: SwordOdds, status: TributeStatus | None,
+                     multiplier: float) -> tuple[bool, float] | None:
+    """(nên đập?, xác suất liên quan) khi cống làm đổi quyết định; None nếu không.
+
+    Đang đủ cống -> (False, rủi ro thiếu nếu đập); đang thiếu -> (True, xác suất đủ sau 1 nhát).
+    """
     if status is None or status.need <= 0:
         return None
     others = status.holdings - sword.value
@@ -84,9 +88,16 @@ def tribute_override(sword: Sword, odds: SwordOdds, status: TributeStatus | None
                 (odds.damage, 1.0 / multiplier), (odds.destruction, 0.0)]
     p_enough = sum(p for p, factor in outcomes if others + sword.value * factor >= status.need)
     if others + sword.value >= status.need:
-        if p_enough < 1.0 - EPSILON:
-            return f"DỪNG (đang đủ cống; đập thì {fmt_pct(1 - p_enough)} rủi ro thiếu)"
+        return (False, 1 - p_enough) if p_enough < 1.0 - EPSILON else None
+    return (True, p_enough) if p_enough > 0 else None
+
+
+def tribute_override(sword: Sword, odds: SwordOdds, status: TributeStatus | None,
+                     multiplier: float) -> str | None:
+    """Gợi ý theo cống cho thanh kiếm; None nếu cống không làm đổi quyết định."""
+    decision = tribute_decision(sword, odds, status, multiplier)
+    if decision is None:
         return None
-    if p_enough > 0:
-        return f"ĐẬP (đang thiếu cống; {fmt_pct(p_enough)} đủ sau 1 nhát)"
-    return None
+    strike, p = decision
+    key = "verdict.strike_tribute_short" if strike else "verdict.stop_tribute_enough"
+    return t(key, pct=fmt_pct(p))

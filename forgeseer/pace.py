@@ -16,6 +16,7 @@ from typing import Iterable, Sequence
 
 from .advisor import GradeOddsTable, SwordOdds
 from .fever_calibration import DEFAULT_FEVER_STRIKES
+from .i18n import t
 from .planner import EPSILON, Plan, plan_sword
 from .save_reader import Sword
 from .text_format import SEP, fmt_int, fmt_pct, fmt_ratio
@@ -36,10 +37,10 @@ SCHEDULE_PER_ROW = 3
 
 def schedule_lines(today: int, schedule: Sequence[float]) -> list[str]:
     """"Cống sắp tới: ngày 16: 290.000 · ..." (3 ngày mỗi dòng); ``schedule[0]`` = ngày ``today + 1``."""
-    items = [f"ngày {today + 1 + i}: {fmt_int(q)}"
+    items = [t("schedule.day", day=today + 1 + i, quota=fmt_int(q))
              for i, q in enumerate(schedule[:MAX_SCHEDULE_SHOWN])]
     rows = [SEP.join(items[i:i + SCHEDULE_PER_ROW]) for i in range(0, len(items), SCHEDULE_PER_ROW)]
-    return [("Cống sắp tới: " if i == 0 else "  ") + row for i, row in enumerate(rows)]
+    return [(t("schedule.head") if i == 0 else "  ") + row for i, row in enumerate(rows)]
 
 
 def _ratios(table: GradeOddsTable | None, multiplier: float, fever_strikes: int):
@@ -118,14 +119,13 @@ def contract_pace(live: list[Sword], need_today: float, schedule: tuple[float, .
 
 def pace_line(pace: Pace) -> Line:
     if pace.behind:
-        return (f"Chậm tiến độ: thiếu {fmt_int(pace.shortfall)} cống cho {pace.days} ngày tới",
-                WARN)
-    return f"Tiến độ: đủ cống cho {pace.covered_days} ngày tới", GOOD
+        return t("pace.behind", amount=fmt_int(pace.shortfall), days=pace.days), WARN
+    return t("pace.ok", days=pace.covered_days), GOOD
 
 
 def pace_detail(pace: Pace) -> str:
     """Dòng phụ: ước tính giá trị sẽ có so với tổng cống cần nộp."""
-    return f"Ước tính sẽ có {fmt_int(pace.available)} / cần {fmt_int(pace.needed)}"
+    return t("pace.detail", available=fmt_int(pace.available), needed=fmt_int(pace.needed))
 
 
 def risk_hint(sword: Sword, plan: Plan | None, odds: SwordOdds, pace: Pace | None,
@@ -139,13 +139,13 @@ def risk_hint(sword: Sword, plan: Plan | None, odds: SwordOdds, pace: Pace | Non
     if pace.behind and plan is not None and plan.ratio > 1.0 + EPSILON:
         tools = []
         if sword.fever_remaining > 0 or plan.strikes_to_fever <= 2:
-            tools.append("trong Xuất Thần")
+            tools.append(t("risk.in_fever"))
         if ward_charges > 0 and odds.destruction > 0:  # nhát không thể gãy -> Vảy Rồng phí
-            tools.append("dùng Vảy Rồng (Q)")
-        how = " " + " / ".join(tools) if tools else f" (kỳ vọng kế hoạch {fmt_ratio(plan.ratio)})"
-        return f"Đang chậm tiến độ → đẩy {sword.tag}{how}"
+            tools.append(t("risk.use_ward"))
+        how = (" " + " / ".join(tools) if tools
+               else t("risk.plan_ev", ratio=fmt_ratio(plan.ratio)))
+        return t("risk.push", tag=sword.tag) + how
     if (pace.comfortable and sword.fever_remaining <= 0
             and odds.destruction >= RISKY_DESTRUCTION):
-        return (f"Đang dư tiến độ → chơi an toàn, đừng mạo hiểm {sword.tag} "
-                f"(Gãy {fmt_pct(odds.destruction)})")
+        return t("risk.play_safe", tag=sword.tag, pct=fmt_pct(odds.destruction))
     return None
