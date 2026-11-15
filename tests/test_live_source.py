@@ -68,7 +68,23 @@ def test_texts_message_stores_relic_texts_and_writes_cache(tmp_path):
     live.handle_message({"type": "send", "payload": {"kind": "texts", "lang": "vi", "items": items}})
 
     assert live.texts()["nail"].name == "Đinh Cong"
-    assert json.loads(cache.read_text(encoding="utf-8")) == items
+    assert json.loads(cache.read_text(encoding="utf-8")) == {"vi": items}
+
+
+def test_texts_for_every_language_and_game_language_from_run(tmp_path):
+    live = LiveSource(texts_cache=tmp_path / "relic_texts.json")
+    langs = {"vi": {"nail": {"name": "Đinh Cong", "description": ""}},
+             "ja": {"nail": {"name": "曲がった釘", "description": ""}}}
+    live.handle_message({"type": "send", "payload": {"kind": "texts", "langs": langs}})
+
+    assert live.language() is None
+    assert live.texts()["nail"].name == "Đinh Cong"  # chưa biết ngôn ngữ -> tiếng Việt
+
+    live.handle_message({"type": "send", "payload": {"kind": "run", "json": "{}", "lang": "ja"}})
+
+    assert live.language() == "ja"
+    assert live.texts()["nail"].name == "曲がった釘"
+    assert live.texts("de")["nail"].name == "Đinh Cong"  # không có bảng -> tiếng Việt
 
 
 def test_run_message_with_shop_simulation():

@@ -14,7 +14,9 @@ from pathlib import Path
 from typing import Any, Callable
 
 from .advisor import GradeOddsTable, PerSword, ShopSimulation, SwordOdds
-from .relic_names import TEXTS_CACHE_FILE, RelicText, parse_relic_texts
+from .i18n import normalize, t
+from .relic_names import (TEXTS_CACHE_FILE, RelicText, parse_language_texts,
+                          pick_language_texts)
 from .relic_rank import RelicRank, parse_relic_rank
 from .save_reader import RunState, SaveReadError, parse_run_save
 
@@ -41,8 +43,9 @@ class LiveSource:
                  texts_cache: Path = TEXTS_CACHE_FILE) -> None:
         self.process_name = process_name
         self.texts_cache = texts_cache
-        self._texts: dict[str, RelicText] = {}
-        self.status = "Đọc trực tiếp: chưa kết nối"
+        self._texts: dict[str, dict[str, RelicText]] = {}  # ngôn ngữ -> id relic -> chữ
+        self._language: str | None = None  # ngôn ngữ game đang dùng (None nếu chưa biết)
+        self.status = t("live.not_connected")
         self._clock = clock
         self._lock = threading.Lock()
         self._state: RunState | None = None
@@ -68,10 +71,16 @@ class LiveSource:
                 return None, None
             return self._state, self._clock() - self._state_at
 
-    def texts(self) -> dict[str, RelicText]:
-        """Tên + mô tả relic chính thức đọc từ game (rỗng nếu chưa nhận)."""
+    def texts(self, lang: str | None = None) -> dict[str, RelicText]:
+        """Tên + mô tả relic chính thức của ``lang`` (mặc định: ngôn ngữ game đang dùng);
+        thiếu thì dùng tiếng Việt, rồi ngôn ngữ đầu tiên có; rỗng nếu chưa nhận."""
         with self._lock:
-            return self._texts
+            return pick_language_texts(self._texts, lang or self._language)
+
+    def language(self) -> str | None:
+        """Mã ngôn ngữ game đang dùng ('vi', 'ja', ...); None nếu chưa nhận được."""
+        with self._lock:
+            return self._language
 
     def quota(self) -> float:
         """Cống phẩm phải nộp của vòng hiện tại (0 nếu chưa biết)."""
@@ -114,28 +123,32 @@ class LiveSource:
     # ---------- xử lý message từ script (luồng Frida) ----------
     def handle_message(self, message: dict[str, Any], _data: Any = None) -> None:
         if message.get("type") != "send":
-            self.status = f"Đọc trực tiếp lỗi: {message.get('description', message)}"
+            self.status = t("live.error", error=message.get("description", message))
             return
         payload = message.get("payload") or {}
         kind = payload.get("kind")
         if kind == "ready":
-            self.status = "Đọc trực tiếp: đã kết nối"
+            self.status = t("live.connected")
         elif kind == "error":
-            self.status = f"Đọc trực tiếp lỗi: {payload.get('message')}"
+            self.status = t("live.error", error=payload.get("message"))
         elif kind == "run":
             self._accept_run(payload)
         elif kind == "texts":
-            self._accept_texts(payload.get("items"))
+            self._accept_texts(payload)
 
-    def _accept_texts(self, items: Any) -> None:
-        texts = parse_relic_texts(items)
+    def _accept_texts(self, payload: dict[str, Any]) -> None:
+        """``{"langs": {lang: {id: {name, description}}}}``; bản cũ: ``{"lang", "items"}``."""
+        raw = payload.get("langs")
+        if not isinstance(raw, dict):
+            raw = {str(payload.get("lang") or "vi"): payload.get("items")}
+        texts = parse_language_texts(raw)
         if not texts:
             return
         with self._lock:
             self._texts = texts
         try:  # cache cho chế độ file save / lần mở sau khi chưa kết nối game
             self.texts_cache.parent.mkdir(parents=True, exist_ok=True)
-            self.texts_cache.write_text(json.dumps(items, ensure_ascii=False), encoding="utf-8")
+            self.texts_cache.write_text(json.dumps(raw, ensure_ascii=False), encoding="utf-8")
         except OSError:
             pass
 
@@ -166,6 +179,9 @@ class LiveSource:
             self._quota_schedule = parse_quota_schedule(payload.get("quotaSchedule"))
             if isinstance(multiplier, (int, float)) and multiplier > 1:
                 self._multiplier = float(multiplier)
+            lang = normalize(payload.get("lang"))
+            if lang is not None:
+                self._language = lang
 
     # ---------- vòng đời kết nối ----------
     def start(self) -> None:
@@ -185,7 +201,7 @@ class LiveSource:
         try:
             import frida  # import trễ: Frida là phụ thuộc tùy chọn
         except ImportError:
-            self.status = "Đọc trực tiếp tắt: chưa cài frida (pip install frida)"
+            self.status = t("live.no_frida")
             return
         source = load_script_source()
         while not self._stop.is_set():
@@ -202,13 +218,13 @@ class LiveSource:
             script.load()
             self._session = session
         except frida.ProcessNotFoundError:
-            self.status = "Đọc trực tiếp: chờ game mở..."
+            self.status = t("live.waiting")
         except Exception as exc:  # noqa: BLE001 - mọi lỗi gắn đều chỉ làm overlay dùng file save
-            self.status = f"Đọc trực tiếp lỗi: {exc}"
+            self.status = t("live.error", error=exc)
 
     def _on_detached(self, reason: str, *_: Any) -> None:
         self._session = None
-        self.status = f"Đọc trực tiếp: mất kết nối ({reason})"
+        self.status = t("live.detached", reason=reason)
 
 
 def parse_quota_schedule(raw: Any) -> tuple[float, ...]:

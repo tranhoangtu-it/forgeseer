@@ -24,6 +24,16 @@ def test_load_relic_texts_reads_cache_or_returns_empty(tmp_path):
     assert load_relic_texts(tmp_path / "missing.json") == {}
 
 
+def test_load_relic_texts_picks_language_with_vietnamese_fallback(tmp_path):
+    f = tmp_path / "relic_texts.json"
+    f.write_text(json.dumps({"vi": {"nail": {"name": "Đinh Cong"}},
+                             "de": {"nail": {"name": "Krummer Nagel"}}}), encoding="utf-8")
+
+    assert load_relic_texts(f, "de")["nail"].name == "Krummer Nagel"
+    assert load_relic_texts(f, "en")["nail"].name == "Đinh Cong"
+    assert load_relic_texts(f)["nail"].name == "Đinh Cong"
+
+
 def test_display_name_uses_mapping_and_keeps_id():
     assert display_name("nail", {"nail": "Đinh"}) == "Đinh"
 

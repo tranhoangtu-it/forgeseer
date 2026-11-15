@@ -16,13 +16,14 @@ from .day_log import DEFAULT_DAY_LOG, DayTracker, append_day, load_day_keys, obs
 from .formatter import DIM, GOOD, NORMAL, TITLE, WARN, format_state
 from .action_plan import ALERT, build_steps
 from .fever_calibration import FeverTracker, load_fever_stats, observe, save_fever_stats
+from .i18n import choose_language, get_language, set_language, t, windows_ui_language
 from .legend import legend_lines
 from .live_source import LiveSource
 from .merchant_advice import evaluate_merchant, merchant_active
 from .relic_names import load_relic_texts
 from .run_log import DEFAULT_RUN_LOG, append_run, load_runs, record_from_state, summary_line
 from .save_reader import RunState, SaveReadError, find_run_save, load_run_state
-from .text_format import SEP
+from .text_format import SEP, display_width
 
 BG = "#101014"
 COLORS = {TITLE: "#f0c060", NORMAL: "#e8e8e8", GOOD: "#7ee08a", WARN: "#ff6b5b", DIM: "#9a9aa8"}
@@ -40,9 +41,6 @@ WS_EX_TRANSPARENT = 0x00000020
 WS_EX_TOOLWINDOW = 0x00000080  # ẩn khỏi taskbar / Alt+Tab
 VK_TOGGLE_LEGEND = 0x76  # F7
 VK_TOGGLE_VISIBLE, VK_TOGGLE_DRAG, VK_QUIT = 0x77, 0x78, 0x79  # F8, F9, F10
-HINT_TEXT = f"F7 chú giải{SEP}F8 ẩn{SEP}F9 di chuyển{SEP}F10 thoát"
-DRAG_HINT_TEXT = "F9: khóa vị trí"
-LIVE_STATUS_PREFIX = "Đọc trực tiếp lúc"
 
 _user32 = ctypes.windll.user32
 _user32.GetWindowLongPtrW.restype = ctypes.c_ssize_t
@@ -77,7 +75,7 @@ def _fill_text(widget: tk.Text, lines: list[tuple[str, str]]) -> None:
     for text, tag in lines:
         widget.insert("end", text + "\n", tag)
     widget.delete("end-2c", "end-1c")  # bỏ dòng trống cuối
-    width = max(len(text) for text, _ in lines)
+    width = max(display_width(text) for text, _ in lines)
     widget.configure(state="disabled", width=width + 1, height=len(lines))
 
 
@@ -94,13 +92,16 @@ class Overlay:
     def __init__(self, root: tk.Tk, save_dir: Path, poll_ms: int, x: int, y: int,
                  names: dict[str, str] | None = None,
                  config_file: Path = DEFAULT_CONFIG_FILE,
-                 live: LiveSource | None = None) -> None:
+                 live: LiveSource | None = None, lang_override: str | None = None) -> None:
         self.root = root
         self.live = live
         self.save_dir = save_dir
         self.poll_ms = poll_ms
         self.names = names or {}
-        self.texts = load_relic_texts()  # cache tên chính thức từ lần kết nối trước
+        self.lang_override = lang_override  # --lang: luôn dùng ngôn ngữ này
+        self._system_lang = windows_ui_language()
+        set_language(choose_language(lang_override, None, self._system_lang))
+        self.texts = load_relic_texts(lang=get_language())  # tên chính thức từ lần kết nối trước
         self.config_file = config_file
         self._fever_tracker = FeverTracker()
         self._fever_stats = load_fever_stats(config_file)
@@ -108,7 +109,7 @@ class Overlay:
         self._day_tracker = DayTracker()
         self._day_keys = load_day_keys(DEFAULT_DAY_LOG)
         self.state: RunState | None = None
-        self.status = "Đang tìm file save..."
+        self.status = t("status.searching")
         self._last_sig: tuple[str, int] | None = None
         self._keys_down: set[int] = set()
         self._visible = True
@@ -242,8 +243,20 @@ class Overlay:
             self._log_day(state)
             self._last_sig = None  # khi mất live, buộc đọc lại file
             self._is_live = True
-            self._set_status(f"{LIVE_STATUS_PREFIX} {time.strftime('%H:%M:%S')}")
+            self._follow_game_language()
+            self._set_status(t("status.live", time=time.strftime("%H:%M:%S")))
         return True
+
+    def _follow_game_language(self) -> None:
+        """Đổi ngôn ngữ overlay theo ngôn ngữ game đang dùng (trừ khi có --lang)."""
+        if self.live is None:
+            return
+        lang = choose_language(self.lang_override, self.live.language(), self._system_lang)
+        if lang != get_language():
+            set_language(lang)
+            _fill_text(self.legend_text, legend_lines())
+            if self.legend.winfo_viewable():
+                self._place_legend()
 
     def _track_fever(self, state: RunState) -> None:
         """Hiệu chỉnh số nhát mỗi đợt Xuất Thần từ dữ liệu trực tiếp (bản chụp ~300ms)."""
@@ -271,7 +284,7 @@ class Overlay:
     def _refresh_from_file(self) -> None:
         path = find_run_save(self.save_dir)
         if path is None:
-            self._set_status(f"Không thấy file save trong {self.save_dir}")
+            self._set_status(t("status.no_save", folder=self.save_dir))
             return
         try:
             sig = (str(path), path.stat().st_mtime_ns)
@@ -283,12 +296,12 @@ class Overlay:
             self.state = load_run_state(path)
         except SaveReadError:
             # Game có thể đang ghi dở; giữ trạng thái cũ, lần poll sau đọc lại.
-            self._set_status("Game đang ghi save, chờ...")
+            self._set_status(t("status.save_busy"))
             return
         self._last_sig = sig
         self._log_finished_run(self.state)
         live_note = f"{SEP}{self.live.status}" if self.live is not None else ""
-        self._set_status(f"Đọc file save lúc {time.strftime('%H:%M:%S')}{live_note}")
+        self._set_status(t("status.save_read", time=time.strftime("%H:%M:%S")) + live_note)
 
     def _set_status(self, status: str) -> None:
         self.status = status
@@ -300,7 +313,7 @@ class Overlay:
         next_quota, reroll_text, relic_rank, schedule = 0.0, "", None, ()
         texts = self.texts
         if self.live is not None:
-            texts = self.live.texts() or texts  # tên chính thức mới nhất từ game
+            texts = self.live.texts(get_language()) or texts  # tên chính thức mới nhất từ game
             if self._is_live:
                 odds, multiplier = self.live.odds()  # tỉ lệ chỉ có ý nghĩa khi đang đọc trực tiếp
                 shop_sim = self.live.shop_simulation()
@@ -318,7 +331,7 @@ class Overlay:
         lines = format_state(self.state, names, odds, multiplier, descriptions, shop_sim,
                              quota, grade_odds, merchant, fever_strikes, next_quota,
                              summary_line(self._runs), relic_rank, schedule)
-        hint = DRAG_HINT_TEXT if self._drag_mode else HINT_TEXT
+        hint = t("hint.drag") if self._drag_mode else t("hint.keys")
         lines = lines + [("", NORMAL), (self.status, DIM), (hint, WARN if self._drag_mode else DIM)]
         _fill_text(self.text, lines)
         steps = build_steps(self.state, odds, multiplier, quota, grade_odds, shop_sim, names, merchant,
@@ -340,12 +353,13 @@ class Overlay:
 
 
 def run_overlay(save_dir: Path, poll_ms: int, x: int, y: int,
-                names: dict[str, str] | None = None, use_live: bool = True) -> None:
+                names: dict[str, str] | None = None, use_live: bool = True,
+                lang: str | None = None) -> None:
     enable_dpi_awareness()
     live = LiveSource() if use_live else None
     if live is not None:
         live.start()
     root = tk.Tk()
-    root.title("ForgeTax Overlay")
-    Overlay(root, save_dir, poll_ms, x, y, names, live=live).start()
+    root.title("ForgeSeer")
+    Overlay(root, save_dir, poll_ms, x, y, names, live=live, lang_override=lang).start()
     root.mainloop()

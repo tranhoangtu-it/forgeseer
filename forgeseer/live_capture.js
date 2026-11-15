@@ -353,7 +353,9 @@ function readRerollText(roomObj) {
 // ---------- tên + mô tả relic chính thức (bảng ngôn ngữ đã giải mã của game) ----------
 // ForgeLocalization có field tĩnh Dictionary<lang, Dictionary<key, text>>; khóa relic:
 // item.<id>.name / item.<id>.description. Chỉ đọc bộ nhớ, không gọi hàm của game.
-const PREFERRED_LANG = 'vi';
+// Bảng chỉ có bản dịch (de, es, ja, pt-BR, ru, vi, zh-CN, zh-TW); tiếng Hàn / tiếng Anh nằm
+// trong mã game nên không có ở đây.
+const CANDIDATE_LANG = 'vi';  // live_relic_rank.js lọc ứng viên theo mô tả tiếng Việt
 const DICT_ENTRY_SIZE = 24;  // struct Entry { int hash; int next; TKey key; TValue value; }
 
 function allFields(k) {
@@ -384,31 +386,104 @@ function dictEntries(dict) {
   return out;
 }
 
-function readItemTexts() {
-  const loc = klass('Assembly-CSharp.dll', '', 'ForgeLocalization');
-  const tableField = allFields(loc).find(f => f.isStatic &&
-    f.type.startsWith('System.Collections.Generic.Dictionary<System.String,System.Collections.Generic.Dictionary'));
-  if (!tableField) return null;
+const localization = klass('Assembly-CSharp.dll', '', 'ForgeLocalization');
+const localizationStatics = allFields(localization).filter(f => f.isStatic);
+
+function readStaticPointer(field) {
   const buf = Memory.alloc(8);
-  api.field_static_get_value(tableField.f, buf);
-  if (buf.readPointer().isNull()) return null;
-  const langs = new Map(dictEntries(buf.readPointer()));
-  const lang = langs.has(PREFERRED_LANG) ? PREFERRED_LANG : [...langs.keys()][0];
-  if (!lang) return null;
+  buf.writePointer(NULL);
+  api.field_static_get_value(field.f, buf);
+  return buf.readPointer();
+}
+
+function itemsOf(table) {
   const items = {};
-  for (const [key, value] of dictEntries(langs.get(lang))) {
+  for (const [key, value] of dictEntries(table)) {
     const m = /^item\.(.+)\.(name|description)$/.exec(key || '');
     if (!m) continue;
     (items[m[1]] = items[m[1]] || {})[m[2]] = readManagedString(value);
   }
-  return { lang, items };
+  return items;
 }
 
+// { langs: {lang: {id: {name, description}}}, tables: Map(lang -> Dictionary) }
+function readLocalization() {
+  const tableField = localizationStatics.find(f =>
+    f.type.startsWith('System.Collections.Generic.Dictionary<System.String,System.Collections.Generic.Dictionary'));
+  if (!tableField) return null;
+  const dict = readStaticPointer(tableField);
+  if (dict.isNull()) return null;
+  const tables = new Map(dictEntries(dict));
+  const langs = {};
+  for (const [lang, table] of tables) langs[lang] = itemsOf(table);
+  return { langs, tables };
+}
+
+// ---------- ngôn ngữ game đang dùng ----------
+// Cách 1: chữ "CỐNG PHẨM PHẢI NỘP" đang hiện trên sổ cống (GPT6ForgeRoom.ledgerText, khóa
+// ui.quota_caption) so với bảng từng ngôn ngữ; không khớp bản dịch nào -> có chữ Hàn = 'ko',
+// còn lại 'en'. Cách 2 (khi chưa có sổ cống): field tĩnh kiểu String của ForgeLocalization
+// đang chứa một mã ngôn ngữ.
+const KNOWN_LANGS = new Set(['ko', 'en', 'vi', 'ja', 'de', 'es', 'ru', 'pt-BR', 'zh-CN', 'zh-TW']);
+const LANG_CHECK_MS = 2000;
+const ledgerField = roomFields.find(f => f.name === 'ledgerText');
+let langCheckedAt = 0;
+let currentLang = null;
+let ledgerGetText = null;
+let quotaCaptions = null;  // chữ "CỐNG PHẨM PHẢI NỘP" của từng ngôn ngữ -> mã ngôn ngữ
+
+function langFromStatics() {
+  for (const f of localizationStatics) {
+    if (f.type !== 'System.String') continue;
+    const value = readManagedString(readStaticPointer(f));
+    if (value && (KNOWN_LANGS.has(value) || (localizationData && localizationData.tables.has(value)))) {
+      return value;
+    }
+  }
+  return null;
+}
+
+function langFromLedger(roomObj) {
+  if (!ledgerField || !localizationData) return null;
+  const mesh = roomObj.add(ledgerField.offset).readPointer();
+  if (mesh.isNull()) return null;
+  if (ledgerGetText === null) ledgerGetText = methodByName(api.object_get_class(mesh), 'get_text', 0);
+  const caption = ((readManagedString(invoke(ledgerGetText, mesh, [])) || '').split('\n')[0] || '').trim();
+  if (!caption) return null;
+  if (quotaCaptions === null) {
+    quotaCaptions = new Map();
+    for (const [lang, table] of localizationData.tables) {
+      const entry = dictEntries(table).find(([key]) => key === 'ui.quota_caption');
+      if (entry) quotaCaptions.set((readManagedString(entry[1]) || '').trim(), lang);
+    }
+  }
+  if (quotaCaptions.has(caption)) return quotaCaptions.get(caption);
+  if (/[가-힣]/.test(caption)) return 'ko';
+  return /^[A-Za-z][A-Za-z ']+$/.test(caption) ? 'en' : null;
+}
+
+function gameLanguage(roomObj) {
+  const now = Date.now();
+  if (now - langCheckedAt < LANG_CHECK_MS) return currentLang;
+  langCheckedAt = now;
+  try {
+    currentLang = langFromLedger(roomObj) || langFromStatics() || currentLang;
+  } catch (e) {
+    // không xác định được thì giữ giá trị cũ; overlay tự dùng ngôn ngữ Windows
+  }
+  return currentLang;
+}
+
+let localizationData = null;
 let itemTexts = null;  // dùng lại ở live_relic_rank.js (danh sách relic ứng viên)
 try {
-  const texts = readItemTexts();
-  itemTexts = texts;
-  if (texts) send({ kind: 'texts', lang: texts.lang, items: texts.items });
+  localizationData = readLocalization();
+  if (localizationData) {
+    const langs = localizationData.langs;
+    const candidateLang = langs[CANDIDATE_LANG] ? CANDIDATE_LANG : Object.keys(langs)[0];
+    if (candidateLang) itemTexts = { lang: candidateLang, items: langs[candidateLang] };
+    send({ kind: 'texts', langs });
+  }
 } catch (e) {
   send({ kind: 'error', message: 'Không đọc được tên relic: ' + e });
 }
@@ -429,14 +504,15 @@ Interceptor.attach(update.readPointer(), {
       const changed = simulateShop(args[0], extra.multiplier);
       const quota = readQuota(args[0]);
       const reroll = json.includes('"shopping":true') ? readRerollText(args[0]) : '';
-      const key = json + JSON.stringify(extra) + quota + reroll;
+      const lang = gameLanguage(args[0]);
+      const key = json + JSON.stringify(extra) + quota + reroll + lang;
       const rank = collectRelicRank(args[0], extra.multiplier);  // live_relic_rank.js
       if (json && (key !== lastJson || changed || rank)) {
         lastJson = key;
         const schedule = forecastSchedule(args[0], quota);  // live_quota_schedule.js
         const message = { kind: 'run', json, odds: extra.odds, multiplier: extra.multiplier, quota,
                           nextQuota: schedule.length ? schedule[0] : 0, quotaSchedule: schedule,
-                          rerollText: reroll };
+                          rerollText: reroll, lang };
         if (changed) {
           message.shopSim = changed.shopSim;
           if (changed.gradeOdds) message.gradeOdds = changed.gradeOdds;
