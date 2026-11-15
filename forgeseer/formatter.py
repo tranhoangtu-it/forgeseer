@@ -11,6 +11,7 @@ from .advisor import GradeOddsTable, ShopSimulation, SwordOdds
 from .fever_calibration import DEFAULT_FEVER_STRIKES
 from .i18n import t
 from .merchant_advice import MerchantItem
+from .panel_decor import with_icon
 from .relic_names import display_name
 from .relic_rank import RelicRank, rank_relics, relic_rank_lines
 from .save_reader import RunState, Sword
@@ -37,30 +38,34 @@ def format_state(state: RunState | None, names: dict[str, str] | None = None,
                  fever_strikes: int = DEFAULT_FEVER_STRIKES,
                  next_quota: float = 0.0, runs_summary: str = "",
                  relic_rank: RelicRank | None = None,
-                 schedule: tuple[float, ...] = (), keep_priority: bool = False) -> list[Line]:
+                 schedule: tuple[float, ...] = (), keep_priority: bool = False,
+                 decorate: bool = False) -> list[Line]:
     """``names``: id di vật -> tên; ``odds``/``shop_sim``/``quota``/``grade_odds``/``relic_rank``/
     ``schedule``: chỉ có khi đọc trực tiếp từ game. ``keep_priority``: giữ phần tử thứ ba LOW
-    của dòng ưu tiên thấp (overlay dùng để co khung cho vừa màn hình)."""
+    của dòng ưu tiên thấp (overlay dùng để co khung cho vừa màn hình). ``decorate``: thêm biểu
+    tượng tiêu đề, thanh tỉ lệ / tiến độ và viên kết luận (``panel_decor``) cho khung Canvas."""
     if state is None:
         return [("ForgeTax", TITLE), (t("state.no_run"), DIM)]
     names = names or {}
     odds = odds or {}
     ctx = _AdviceContext(target_sword(state.swords, odds), odds,
                          shop_sim or ShopSimulation(), multiplier, names)
+    icon = with_icon if decorate else (lambda lines, _icon: lines)
     sections: list[list[Line]] = [
-        [("ForgeTax", TITLE)] + _campaign_lines(state),
-        tribute_lines(state, quota, next_quota, schedule, grade_odds, multiplier, fever_strikes),
-        sword_lines(state, odds, multiplier, quota, grade_odds, fever_strikes),
-        _relic_lines(state, names, ctx),
-        low(relic_rank_lines(relic_rank, names, offered_ids(state, merchant))),
+        icon([("ForgeTax", TITLE)], "forge") + _campaign_lines(state),
+        tribute_lines(state, quota, next_quota, schedule, grade_odds, multiplier, fever_strikes,
+                      decorate),
+        sword_lines(state, odds, multiplier, quota, grade_odds, fever_strikes, decorate),
+        icon(_relic_lines(state, names, ctx), "relic"),
+        icon(low(relic_rank_lines(relic_rank, names, offered_ids(state, merchant))), "rank"),
     ]
     if state.shopping:
-        sections.append(_shop_lines(state, names, descriptions or {}, ctx))
+        sections.append(icon(_shop_lines(state, names, descriptions or {}, ctx), "shop"))
     if merchant:
         starred = {r.id for r in rank_relics(relic_rank)}
-        sections.append(_merchant_lines(merchant, names, starred))
-    sections.append(low(_stats_lines(state, fever_strikes)
-                        + ([(runs_summary, DIM)] if runs_summary else [])))
+        sections.append(icon(_merchant_lines(merchant, names, starred), "merchant"))
+    sections.append(icon(low(_stats_lines(state, fever_strikes)
+                             + ([(runs_summary, DIM)] if runs_summary else [])), "stats"))
     lines = wrap_lines(join_sections(sections))
     return lines if keep_priority else plain(lines)
 

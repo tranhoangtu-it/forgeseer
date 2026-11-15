@@ -2,8 +2,9 @@ import math
 
 import pytest
 
+from forgeseer.panel_decor import is_bar, odds_bar
 from forgeseer.panel_layout import (
-    MIN_FONT, FontMetrics, compact_lines, fit_layout, split_columns,
+    MIN_FONT, PAD_X, PAD_Y, FontMetrics, compact_lines, fit_layout, split_columns,
 )
 from forgeseer.text_format import LOW, is_low
 
@@ -143,3 +144,40 @@ def test_truncates_with_localized_more_line_when_nothing_else_fits():
 def test_raises_without_metrics():
     with pytest.raises(ValueError):
         fit_layout([("a", "normal")], {}, 100, 100, 10)
+
+
+def test_bar_rows_count_as_a_line_but_not_as_width():
+    m = consolas_metrics(1.0)[10]
+    text = [("  +9 trên đe · giá trị 9.200", "normal"), ("    Gãy 19% · Thành công 48%", "normal")]
+    with_bar = text[:1] + [odds_bar((0.19, 0.03, 0.16, 0.48, 0.14), 4)] + text[1:]
+
+    plain = fit_layout(text, {10: m}, 5000, 5000, 10)
+    barred = fit_layout(with_bar, {10: m}, 5000, 5000, 10)
+
+    assert barred.height - plain.height == m.line_height
+    assert barred.width == plain.width
+
+
+def test_compact_drops_bars_and_columns_keep_them_with_their_sword():
+    lines = []
+    for block in realistic_lines():
+        lines.append(block)
+        if block[0].startswith("    Gãy"):
+            lines.append(odds_bar((0.19, 0.03, 0.16, 0.48, 0.14), 4))
+
+    short = compact_lines(lines)
+    left, right = split_columns(lines, consolas_metrics(1.0)[8], 2000, 10_000)
+
+    assert not any(is_bar(line) for line in short)
+    assert not is_bar(right[0]) and not is_bar(left[0])
+
+
+def test_gutter_and_padding_scale_with_dpi():
+    lines = [("Kiếm (1):", "title"), ("  +0", "normal")]
+    m = consolas_metrics(1.0)[10]
+
+    at_100 = fit_layout(lines, {10: m}, 5000, 5000, 10)
+    at_150 = fit_layout(lines, {10: m}, 5000, 5000, 10, scale=1.5)
+
+    assert at_150.width - at_100.width == 2 * (round(PAD_X * 1.5) - PAD_X)
+    assert at_150.height - at_100.height == 2 * (round(PAD_Y * 1.5) - PAD_Y)

@@ -11,6 +11,8 @@ from pathlib import Path
 from typing import Callable
 
 from .action_plan import build_steps
+from .alerts import (FEVER, STAR, TRIBUTE, AlertMemory, AlertSignals, alert_signals,
+                     detect_alerts, sound_enabled)
 from .config import DEFAULT_CONFIG_FILE, DEFAULT_POSITION, load_config, save_position, update_config
 from .day_log import DEFAULT_DAY_LOG, DayTracker, append_day, load_day_keys, observe_day
 from .fever_calibration import FeverTracker, load_fever_stats, observe, save_fever_stats
@@ -19,8 +21,10 @@ from .i18n import choose_language, get_language, set_language, t, windows_ui_lan
 from .legend import legend_lines
 from .live_source import LiveSource
 from .merchant_advice import evaluate_merchant, merchant_active
+from .dpi import scale_for
 from .overlay_windows import OverlayWindow, key_is_down, measure_metrics
-from .panel_layout import MIN_FONT, Layout, fit_layout
+from .panel_decor import with_icon
+from .panel_layout import MIN_FONT, FontMetrics, Layout, fit_layout
 from .relic_names import load_relic_texts
 from .run_log import DEFAULT_RUN_LOG, append_run, load_runs, record_from_state, summary_line
 from .save_reader import RunState, SaveReadError, find_run_save, load_run_state
@@ -34,6 +38,8 @@ LIVE_FRESH_SECONDS = 3.0  # dữ liệu trực tiếp cũ hơn mức này -> qua
 
 VK_SETTINGS, VK_TOGGLE_LEGEND = 0x75, 0x76  # F6, F7
 VK_TOGGLE_VISIBLE, VK_TOGGLE_DRAG, VK_QUIT = 0x77, 0x78, 0x79  # F8, F9, F10
+# Hiệu ứng cảnh báo: (màu viền, số lần nháy, chu kỳ ms)
+ALERT_FLASH = {FEVER: ("#ffb020", 6, 200), TRIBUTE: ("#ff6b5b", 2, 320), STAR: ("#f5c542", 2, 320)}
 
 
 class Overlay:
@@ -75,12 +81,14 @@ class Overlay:
         self._drag_mode = False
         self._drag_origin = (0, 0)
         self._running = True
+        self._alerts = AlertMemory()
+        self._metrics: dict[int, dict[int, FontMetrics]] = {}  # DPI -> cỡ chữ -> số đo
 
-        self.metrics = measure_metrics(master, range(MIN_FONT, FONT_MAX + 1))
         self.details = OverlayWindow(master, settings.font_size, settings.alpha)
         self.details.move(x, y)
-        self.details.text.bind("<ButtonPress-1>", self._on_drag_start)
-        self.details.text.bind("<B1-Motion>", self._on_drag_move)
+        self.details.canvas.bind("<ButtonPress-1>", self._on_drag_start)
+        self.details.canvas.bind("<B1-Motion>", self._on_drag_move)
+        self.details.canvas.bind("<ButtonRelease-1>", lambda _e: self.render())
         self.panel = OverlayWindow(master, settings.font_size, settings.alpha)  # "Việc cần làm"
         self.legend = OverlayWindow(master, settings.font_size, settings.alpha)  # "Chú giải" (F7)
         self._set_live(settings.live)
@@ -130,14 +138,27 @@ class Overlay:
         if legend:
             self._place_legend()
 
+    def _metrics_for(self, dpi: int) -> dict[int, FontMetrics]:
+        if dpi not in self._metrics:
+            self._metrics[dpi] = measure_metrics(self.master, range(MIN_FONT, FONT_MAX + 1), dpi)
+        return self._metrics[dpi]
+
     def _fit(self, window: OverlayWindow, lines: list, pinned_tail: int = 0) -> Layout:
-        """Co khung cho vừa vùng làm việc của màn hình đang chứa nó, rồi vẽ."""
+        """Co khung cho vừa vùng làm việc của màn hình đang chứa nó (theo DPI của màn hình
+        đó), rồi vẽ."""
         left, top, right, bottom = window.work_area()
-        layout = fit_layout(lines, self.metrics, right - left - 2 * PANEL_MARGIN,
+        dpi = window.dpi()
+        metrics = self._metrics_for(dpi)
+        layout = fit_layout(lines, metrics, right - left - 2 * PANEL_MARGIN,
                             bottom - top - 2 * PANEL_MARGIN, self.settings.font_size,
-                            pinned_tail=pinned_tail)
-        window.fill(layout)
+                            pinned_tail=pinned_tail, scale=scale_for(dpi))
+        window.fill(layout, metrics[layout.font_size], dpi)
         return layout
+
+    def _dpi_changed(self) -> bool:
+        """Có khung nào vừa sang màn hình có DPI khác (font đang dùng không còn đúng)?"""
+        return any(w.window.winfo_viewable() and w.dpi() != w.fonts.dpi
+                   for w in (self.details, self.panel, self.legend))
 
     # ---------- vòng lặp ----------
     def start(self) -> None:
@@ -174,11 +195,15 @@ class Overlay:
             if not self._drag_mode:  # vừa khóa vị trí -> nhớ cho lần mở sau
                 self._save_position()
             self.render()
+        if self._dpi_changed():  # Windows không co giãn khung (per-monitor v2) -> tự vẽ lại
+            self.render()
+            if self.legend.window.winfo_viewable():
+                self._place_legend()
         self.master.after(HOTKEY_POLL_MS, self._poll_hotkeys)
 
     def _place_legend(self) -> None:
         """Khung chú giải ở giữa mép trên vùng làm việc của màn hình."""
-        self._fit(self.legend, legend_lines())
+        self._fit(self.legend, with_icon(legend_lines(), "info"))
         left, top, right, _ = self.legend.work_area()
         width, _ = self.legend.size()
         self.legend.move(max(left + (right - left - width) // 2, left), top + PANEL_MARGIN)
@@ -310,17 +335,34 @@ class Overlay:
                     if self.state is not None and merchant_active(self.state) else [])
         lines = format_state(self.state, names, odds, multiplier, descriptions, shop_sim,
                              quota, grade_odds, merchant, fever_strikes, next_quota,
-                             summary_line(self._runs), relic_rank, schedule, keep_priority=True)
+                             summary_line(self._runs), relic_rank, schedule, keep_priority=True,
+                             decorate=True)
         hint = t("hint.drag") if self._drag_mode else t("hint.keys")
         lines = lines + [("", NORMAL), (self.status, DIM), (hint, WARN if self._drag_mode else DIM)]
         self._fit(self.details, lines, pinned_tail=STATUS_LINES)
         self._keep_details_on_screen()
         steps = build_steps(self.state, odds, multiplier, quota, grade_odds, shop_sim, names, merchant,
                             fever_strikes, next_quota, reroll_text, relic_rank, schedule)
-        self._fit(self.panel, steps)
+        self._fit(self.panel, with_icon(steps, "todo"))
         left, top, right, _ = self.panel.work_area()  # sát mép phải vùng làm việc
         width, _ = self.panel.size()
         self.panel.move(max(right - width - PANEL_MARGIN, left), top + PANEL_MARGIN)
+        if self._is_live and self.state is not None:
+            merchant_ids = [i.offer.id for i in merchant if not i.offer.sold]
+            self._fire_alerts(alert_signals(self.state, quota, relic_rank, merchant_ids))
+
+    # ---------- cảnh báo ----------
+    def _fire_alerts(self, signals: AlertSignals) -> None:
+        """Mỗi sự kiện một lần: Xuất Thần nháy khung việc cần làm (+ tiếng), thiếu cống nháy
+        khung chi tiết, món ★ nháy khung việc cần làm."""
+        self._alerts, fired = detect_alerts(self._alerts, signals, time.monotonic())
+        todo_shown = self.panel.window.winfo_viewable()
+        for alert in fired:
+            color, cycles, period = ALERT_FLASH[alert]
+            target = self.details if alert == TRIBUTE or not todo_shown else self.panel
+            target.flash(color, cycles, period)
+            if alert == FEVER and sound_enabled(load_config(self.config_file)):
+                _beep()
 
     def _keep_details_on_screen(self) -> None:
         """Đẩy khung chi tiết vào trong vùng làm việc nếu nó lòi ra ngoài (sau khi co/kéo)."""
@@ -342,3 +384,12 @@ class Overlay:
             return
         dx, dy = self._drag_origin
         self.details.move(event.x_root - dx, event.y_root - dy)
+
+
+def _beep() -> None:
+    """Tiếng "chú ý" ngắn của Windows (không chặn vòng lặp); máy không có âm thanh thì thôi."""
+    try:
+        import winsound
+        winsound.MessageBeep(winsound.MB_ICONEXCLAMATION)
+    except (ImportError, RuntimeError):
+        pass

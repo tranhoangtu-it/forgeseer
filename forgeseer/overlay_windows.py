@@ -1,4 +1,9 @@
-"""Cửa sổ trong suốt, luôn nằm trên, cho chuột bấm xuyên qua (Win32) dùng cho các khung overlay."""
+"""Cửa sổ trong suốt, luôn nằm trên, cho chuột bấm xuyên qua (Win32) dùng cho các khung overlay.
+
+Mỗi khung vẽ lên một Canvas (``panel_canvas``) với nền bo góc; phần ngoài góc bo dùng màu khóa
+``-transparentcolor`` nên trong suốt hẳn. Font tính bằng pixel theo DPI của màn hình đang chứa
+khung (``dpi``), nên kéo khung sang màn hình có mức scale khác thì chữ vẫn sắc và đúng cỡ.
+"""
 from __future__ import annotations
 
 import ctypes
@@ -7,16 +12,12 @@ import tkinter as tk
 import tkinter.font as tkfont
 from ctypes import wintypes
 
-from .action_plan import ALERT
-from .formatter import DIM, GOOD, NORMAL, TITLE, WARN
-from .panel_layout import COLUMN_GAP, FontMetrics, Layout
-from .text_format import display_width
+from .dpi import BASE_DPI, enable_per_monitor_awareness, font_pixels, scale_for, window_dpi
+from .panel_canvas import TRANSPARENT_KEY, PanelCanvas
+from .panel_layout import FontMetrics, Layout
 
-BG = "#101014"
-COLORS = {TITLE: "#f0c060", NORMAL: "#e8e8e8", GOOD: "#7ee08a", WARN: "#ff6b5b", DIM: "#9a9aa8"}
 FONT_FAMILY = "Consolas"
 ALERT_EXTRA_POINTS = 4  # chữ cảnh báo to hơn chữ thường
-ALERT_BG = "#b01818"
 
 GWL_EXSTYLE = -20
 WS_EX_LAYERED = 0x00080000
@@ -46,69 +47,76 @@ _user32.GetMonitorInfoW.restype = wintypes.BOOL
 _user32.GetMonitorInfoW.argtypes = [wintypes.HMONITOR, ctypes.POINTER(_MonitorInfo)]
 
 
-def enable_dpi_awareness() -> None:
-    """Chữ sắc nét trên màn hình scale >100%. Bỏ qua nếu Windows không hỗ trợ."""
-    try:
-        ctypes.windll.shcore.SetProcessDpiAwareness(1)
-    except (AttributeError, OSError):
-        pass
+def enable_dpi_awareness() -> str:
+    """Per-monitor v2 (lùi dần về v1 / system-aware); gọi trước khi tạo root Tk."""
+    return enable_per_monitor_awareness()
 
 
 def key_is_down(vk: int) -> bool:
     return bool(_user32.GetAsyncKeyState(vk) & 0x8000)
 
 
-def measure_metrics(master: tk.Misc, sizes: range) -> dict[int, FontMetrics]:
-    """Đo chiều cao dòng và bề rộng một cột của font overlay ở từng cỡ (theo DPI hiện tại)."""
+def measure_metrics(master: tk.Misc, sizes: range, dpi: int = BASE_DPI) -> dict[int, FontMetrics]:
+    """Chiều cao dòng và bề rộng một cột của font overlay ở từng cỡ (point) tại ``dpi``."""
     metrics = {}
     for size in sizes:
-        font = tkfont.Font(master, family=FONT_FAMILY, size=size)
+        font = tkfont.Font(master, family=FONT_FAMILY, size=font_pixels(size, dpi))
         metrics[size] = FontMetrics(font.metrics("linespace"), font.measure("0"))
     return metrics
 
 
 class OverlayFonts:
-    """Font của một khung; mỗi khung tự co cỡ chữ cho vừa màn hình nên không dùng chung."""
+    """Font của một khung; mỗi khung tự co cỡ chữ và theo DPI màn hình riêng nên không dùng chung."""
 
-    def __init__(self, master: tk.Misc, size: int) -> None:
-        self.size = size
-        self.normal = tkfont.Font(master, family=FONT_FAMILY, size=size)
-        self.bold = tkfont.Font(master, family=FONT_FAMILY, size=size, weight="bold")
-        self.alert = tkfont.Font(master, family=FONT_FAMILY, size=size + ALERT_EXTRA_POINTS,
-                                 weight="bold")
+    def __init__(self, master: tk.Misc, size: int, dpi: int = BASE_DPI) -> None:
+        self.size, self.dpi = size, dpi
+        self.normal = tkfont.Font(master, family=FONT_FAMILY)
+        self.bold = tkfont.Font(master, family=FONT_FAMILY, weight="bold")
+        self.alert = tkfont.Font(master, family=FONT_FAMILY, weight="bold")
+        self._apply()
 
-    def resize(self, size: int) -> None:
-        if size == self.size:
+    def _apply(self) -> None:
+        px = font_pixels(self.size, self.dpi)
+        self.normal.configure(size=px)
+        self.bold.configure(size=px)
+        self.alert.configure(size=font_pixels(self.size + ALERT_EXTRA_POINTS, self.dpi))
+
+    def resize(self, size: int, dpi: int | None = None) -> None:
+        dpi = self.dpi if dpi is None else dpi
+        if (size, dpi) == (self.size, self.dpi):
             return
-        self.size = size
-        self.normal.configure(size=size)
-        self.bold.configure(size=size)
-        self.alert.configure(size=size + ALERT_EXTRA_POINTS)
+        self.size, self.dpi = size, dpi
+        self._apply()
 
 
 class OverlayWindow:
-    """Một khung overlay: Toplevel không viền + ô chữ, mặc định cho chuột bấm xuyên qua."""
+    """Một khung overlay: Toplevel không viền + Canvas, mặc định cho chuột bấm xuyên qua."""
 
     def __init__(self, master: tk.Misc, font_size: int, alpha: float) -> None:
         self.alpha = alpha
-        self.fonts = OverlayFonts(master, font_size)
         self.window = tk.Toplevel(master)
         self.window.overrideredirect(True)
         self.window.attributes("-topmost", True)
-        self.window.attributes("-alpha", alpha)
-        self.window.configure(bg=BG)
-        self.text = _make_text(self.window, self.fonts)
+        self.window.configure(bg=TRANSPARENT_KEY)
+        self.panel = PanelCanvas(self.window)
+        self.canvas = self.panel.canvas
         self.window.update_idletasks()
         self.hwnd = _user32.GetParent(self.window.winfo_id()) or self.window.winfo_id()
+        self.fonts = OverlayFonts(master, font_size, self.dpi())
         self.set_click_through(True)
+
+    def dpi(self) -> int:
+        """DPI của màn hình đang chứa khung (đổi khi khung bị kéo sang màn hình khác)."""
+        return window_dpi(self.hwnd)
 
     def set_click_through(self, enabled: bool) -> None:
         style = _user32.GetWindowLongPtrW(self.hwnd, GWL_EXSTYLE)
         style |= WS_EX_LAYERED | WS_EX_TOOLWINDOW
         style = style | WS_EX_TRANSPARENT if enabled else style & ~WS_EX_TRANSPARENT
         _user32.SetWindowLongPtrW(self.hwnd, GWL_EXSTYLE, style)
-        # Tk tự đặt lại alpha khi đổi style layered -> gán lại cho chắc.
+        # Tk tự đặt lại thuộc tính layered khi đổi style -> gán lại cho chắc.
         self.window.attributes("-alpha", self.alpha)
+        self.window.attributes("-transparentcolor", TRANSPARENT_KEY)
 
     def set_alpha(self, alpha: float) -> None:
         self.alpha = alpha
@@ -120,13 +128,14 @@ class OverlayWindow:
         else:
             self.window.withdraw()
 
-    def fill(self, layout: Layout) -> None:
-        """Vẽ một bố cục (cỡ chữ + 1 hoặc 2 cột) đã tính bằng ``panel_layout.fit_layout``."""
-        self.fonts.resize(layout.font_size)
-        if len(layout.columns) == 1:
-            fill_text(self.text, list(layout.columns[0]))
-        else:
-            fill_columns(self.text, *layout.columns)
+    def fill(self, layout: Layout, metrics: FontMetrics, dpi: int) -> None:
+        """Vẽ một bố cục (cỡ chữ + 1 hoặc 2 cột) đã tính bằng ``panel_layout.fit_layout``;
+        ``metrics``/``dpi``: số đo font của đúng màn hình đã dùng để tính bố cục."""
+        self.fonts.resize(layout.font_size, dpi)
+        self.panel.draw(layout, self.fonts, metrics, scale_for(dpi))
+
+    def flash(self, color: str, cycles: int = 3, period_ms: int = 220) -> None:
+        self.panel.flash(color, cycles, period_ms)
 
     def move(self, x: int, y: int) -> None:
         self.window.geometry(f"+{x}+{y}")
@@ -148,43 +157,3 @@ class OverlayWindow:
             return r.left, r.top, r.right, r.bottom
         return 0, 0, self.window.winfo_screenwidth(), self.window.winfo_screenheight()
 
-
-def _make_text(parent: tk.Misc, fonts: OverlayFonts) -> tk.Text:
-    text = tk.Text(parent, bg=BG, bd=0, highlightthickness=0, font=fonts.normal,
-                   padx=10, pady=8, wrap="none", cursor="arrow")
-    for tag, color in COLORS.items():
-        text.tag_configure(tag, foreground=color)
-    text.tag_configure(TITLE, foreground=COLORS[TITLE], font=fonts.bold)
-    text.tag_configure(ALERT, foreground="#ffffff", background=ALERT_BG, font=fonts.alert)
-    text.pack()
-    return text
-
-
-def fill_text(widget: tk.Text, lines: list[tuple[str, ...]]) -> None:
-    widget.configure(state="normal")
-    widget.delete("1.0", "end")
-    for line in lines:
-        widget.insert("end", line[0] + "\n", line[1])
-    widget.delete("end-2c", "end-1c")  # bỏ dòng trống cuối
-    width = max(display_width(line[0]) for line in lines)
-    widget.configure(state="disabled", width=width + 1, height=len(lines))
-
-
-def fill_columns(widget: tk.Text, left: tuple[tuple[str, ...], ...],
-                 right: tuple[tuple[str, ...], ...]) -> None:
-    """Hai cột trong cùng một ô chữ: cột trái được đệm khoảng trắng (không tô màu) cho thẳng."""
-    left_width = max((display_width(line[0]) for line in left), default=0)
-    right_width = max((display_width(line[0]) for line in right), default=0)
-    rows = max(len(left), len(right))
-    widget.configure(state="normal")
-    widget.delete("1.0", "end")
-    for i in range(rows):
-        text = left[i][0] if i < len(left) else ""
-        if i < len(left):
-            widget.insert("end", text, left[i][1])
-        widget.insert("end", " " * (left_width - display_width(text) + COLUMN_GAP))
-        if i < len(right):
-            widget.insert("end", right[i][0], right[i][1])
-        widget.insert("end", "\n")
-    widget.delete("end-2c", "end-1c")
-    widget.configure(state="disabled", width=left_width + COLUMN_GAP + right_width + 1, height=rows)

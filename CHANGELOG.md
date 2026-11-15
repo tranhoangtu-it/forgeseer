@@ -14,6 +14,18 @@
 - New version notice: at start-up ForgeSeer asks GitHub once whether there's a newer release and
   shows a link at the top of the settings window. Offline or rate limited, it just stays quiet.
   "Check for a new version at start-up" turns it off.
+- New look for the panels: rounded dark cards with a thin border, a small icon next to each
+  section, a five-colour bar under every sword's odds (break, damage, no change, success, great),
+  bars for today's tribute (delivered, what you hold, the quota mark) and for the contract pace,
+  and the strike / stop call drawn as a coloured pill. The text is the same as before, and the
+  bars are the first thing to go when a panel has to shrink to fit the screen.
+- Alerts: when a Frenzy starts the to-do panel's border flashes and Windows plays its short
+  "exclamation" sound; when today's tribute can't be covered with the swords you hold, the detail
+  panel flashes once that day; when a ★ relic shows up for sale, the to-do panel flashes once.
+  To turn the sound off set `"sound_alerts": false` under `settings` in config.json.
+- Per-monitor DPI: the overlay is now per-monitor DPI aware, so on setups that mix scaling levels
+  (say a 4K at 150% next to a 1440p at 100%) the panels are no longer blurry or oddly sized after
+  you move them to the other screen. Fonts are re-measured for the monitor each panel is on.
 
 ## 1.1.1 (2026-11-16)
 
