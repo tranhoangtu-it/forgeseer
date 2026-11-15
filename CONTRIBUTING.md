@@ -1,22 +1,28 @@
-# Đóng góp cho ForgeSeer
+# Contributing
 
-Cảm ơn bạn đã quan tâm! Mọi đóng góp đều được chào đón.
+Thanks for taking a look.
 
-## Báo lỗi / đề xuất
-- Dùng [mẫu báo lỗi hoặc đề xuất](https://github.com/tranhoangtu-it/forgeseer/issues/new/choose).
-- Ghi rõ phiên bản ForgeSeer, ngày trong game, và ảnh chụp overlay nếu có.
+## Bugs and ideas
 
-## Phát triển
+Open an issue using one of the [templates](https://github.com/tranhoangtu-it/forgeseer/issues/new/choose).
+The ForgeSeer version, the in-game day and a screenshot of the overlay help a lot.
+
+## Working on the code
+
 ```bash
 pip install pytest frida
 python -m pytest -q
 python -m forgeseer
 ```
-- Đọc [docs/forgeseer-handoff.md](docs/forgeseer-handoff.md) trước: kiến trúc và các dữ kiện game đã xác minh.
-- Viết test trước cho logic thuần (pytest), giữ module gọn.
-- Commit theo [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `docs:`…).
 
-## Nguyên tắc bắt buộc
-- **Chỉ đọc**: không ghi dữ liệu game hay file save; mô phỏng chỉ trên bản sao tạo mới.
-- **Không** dự đoán kết quả từ trạng thái RNG của game.
-- Chữ trên giao diện: tiếng Việt theo thuật ngữ chính thức của game, không viết tắt.
+- [docs/technical-notes.md](docs/technical-notes.md) has the architecture and what's known about
+  the game's internals.
+- Logic lives in plain functions with pytest tests; please add a test with your change.
+- Overlay text goes in `forgeseer/locales/*.json`. Add new keys to every language file (English is
+  fine as a placeholder if you don't speak one of them, just say so in the PR).
+- Commits follow [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `docs:`...).
+
+## Hard rules
+
+- Read-only: never write game memory or the save file. Simulations only run on fresh copies.
+- No predicting outcomes from the game's RNG state.

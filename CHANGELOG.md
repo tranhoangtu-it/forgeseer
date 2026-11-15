@@ -1,14 +1,22 @@
 # Changelog
 
-## [1.0.0] – 2026-11-15
+## Unreleased
 
-Bản phát hành đầu tiên.
+- The overlay follows the game's language. Catalogs for English, Korean, Japanese, Simplified and
+  Traditional Chinese, German, Spanish, Brazilian Portuguese, Russian and Vietnamese.
+- Relic names and descriptions come from the game's table for the current language.
+- `--lang` to pick a language by hand.
+- Numbers use the separators of the selected language.
 
-### Tính năng
-- Tỉ lệ thật của nhát búa kế tiếp (từ hàm tính tỉ lệ của game) và gợi ý ĐẬP / DỪNG.
-- Kế hoạch đập nhiều nhát (quy hoạch động) có tính Xuất Thần, hiệu chỉnh theo tốc độ tay người chơi.
-- Cống hôm nay, lịch cống các ngày tới, thước đo tiến độ, chọn kiếm nộp tối ưu.
-- Mô phỏng mua / bỏ / đổi di vật; bảng di vật giảm tỉ lệ gãy ở +8/+12/+16; ★ món đáng săn.
-- Gợi ý hàng Thương nhân ma; gợi ý đổi hàng cửa hàng di vật.
-- Khung "Việc cần làm", khung chú giải (F7), tên di vật tiếng Việt chính thức, kiếm trên đe luôn đứng đầu.
-- Nhật ký lượt chơi và từng ngày.
+## 1.0.0 (2026-11-15)
+
+First release.
+
+- Real odds for the next strike, read from the game's odds function, with a strike / stop call.
+- Multi-strike plan that accounts for Frenzy, calibrated to how fast you hit.
+- Today's tribute, the next days' schedule, a pace estimate and the best swords to offer.
+- Buy / drop / swap simulation for relics, a break-reduction ranking at +8/+12/+16, ★ for the
+  ones worth hunting.
+- Ghost merchant and relic shop reroll advice.
+- "To do" panel, F7 legend, official Vietnamese relic names, sword on the anvil always listed first.
+- Run and per-day logs.

@@ -1,15 +1,14 @@
-## ForgeSeer v1.0.0 – bản phát hành đầu tiên
+First release of ForgeSeer, a read-only strategy overlay for ForgeTax on Windows.
 
-Overlay chiến thuật **chỉ đọc** cho ForgeTax (Windows), giao diện tiếng Việt.
+What's in it:
 
-**Có gì:**
-- Tỉ lệ thật của nhát búa kế tiếp (từ chính hàm của game) và gợi ý ĐẬP / DỪNG.
-- Kế hoạch đập nhiều nhát có tính Xuất Thần, hiệu chỉnh theo tốc độ tay của bạn.
-- Cống hôm nay, lịch cống các ngày tới, thước đo tiến độ, chọn kiếm nộp tối ưu.
-- Mô phỏng mua / bỏ / đổi di vật, bảng di vật giảm tỉ lệ gãy, gợi ý hàng Thương nhân ma.
-- Khung "Việc cần làm", khung chú giải (F7), tên di vật tiếng Việt chính thức.
+- Real odds for the next strike (from the game's own function) and a strike / stop call.
+- A multi-strike plan that accounts for Frenzy, tuned to how fast you hit.
+- Today's tribute, the coming days, a pace estimate and which swords to offer.
+- Relic buy / drop / swap simulation, a break-reduction ranking, ghost merchant advice.
+- A "to do" panel and an F7 legend. The UI is in Vietnamese in this version.
 
-**Cách dùng:** giải nén, mở ForgeTax ở chế độ Windowed/Borderless, chạy `ForgeSeer.exe`.
-F7 chú giải · F8 ẩn · F9 di chuyển · F10 thoát.
+To use it: unzip, run ForgeTax windowed or borderless, start `ForgeSeer.exe`.
+F7 legend, F8 hide, F9 move, F10 quit.
 
-> Công cụ không chính thức. Phần mềm diệt virus có thể cảnh báo do dùng Frida để đọc dữ liệu game.
+Unofficial fan tool. Your antivirus may complain because it uses Frida to read the game.

@@ -1,104 +1,96 @@
-<div align="center">
+# ForgeSeer
 
-# 🔮 ForgeSeer
+[![Release](https://img.shields.io/github/v/release/tranhoangtu-it/forgeseer)](https://github.com/tranhoangtu-it/forgeseer/releases/latest)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-### Nhìn thấu từng nhát búa trong **ForgeTax**
-*See through every hammer strike in ForgeTax*
+A small overlay I wrote for ForgeTax. It sits on top of the game and shows the real odds of your
+next hammer strike, plus what I'd do next: strike or stop, which swords to offer for the tribute,
+which relic is worth buying.
 
-[![Release](https://img.shields.io/github/v/release/tranhoangtu-it/forgeseer?style=for-the-badge&color=f0a030)](https://github.com/tranhoangtu-it/forgeseer/releases/latest)
-[![Downloads](https://img.shields.io/github/downloads/tranhoangtu-it/forgeseer/total?style=for-the-badge&color=7ee08a)](https://github.com/tranhoangtu-it/forgeseer/releases)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue?style=for-the-badge)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-Windows-0078D6?style=for-the-badge&logo=windows)](#-cài-đặt)
-[![Python](https://img.shields.io/badge/python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)](#-chạy-từ-mã-nguồn)
-[![Stars](https://img.shields.io/github/stars/tranhoangtu-it/forgeseer?style=for-the-badge&color=yellow)](https://github.com/tranhoangtu-it/forgeseer/stargazers)
+<img src="docs/images/forgeseer-overlay.png" alt="ForgeSeer running over ForgeTax" width="820">
 
-**[⬇️ Tải bản mới nhất](https://github.com/tranhoangtu-it/forgeseer/releases/latest)** · [Tính năng](#-tính-năng) · [Cài đặt](#-cài-đặt) · [English](#-english) · [Báo lỗi](https://github.com/tranhoangtu-it/forgeseer/issues/new/choose)
+## Why
 
-<img src="docs/images/forgeseer-overlay.png" alt="ForgeSeer overlay trong ForgeTax" width="820">
+I kept breaking swords at +14 and offering the wrong ones at the end of the day. The game knows
+the exact odds for every strike (they change with every relic you pick up), it just doesn't show
+them. So I attached to the game, called its own odds function and put the numbers on screen.
+Then I kept adding the things I was working out on paper anyway.
 
-</div>
+## What it shows
 
----
+- Odds for the next strike on every sword: break, damage, no change, success, great success,
+  computed by the game itself with all your relics applied.
+- Strike or stop. One-strike expected value, and a multi-strike plan that knows about Frenzy and
+  how many strikes you actually land during one (it measures that as you play).
+- Tribute: what's due today, the next few days, whether you're on pace, and which swords to offer
+  so you give up the least.
+- Relics: what buying, dropping or swapping each one would do to your odds, and a list of the
+  relics that cut the break chance the most at +8 / +12 / +16.
+- Ghost merchant offers rated against their price.
+- A "to do" panel on the right with the next steps in order.
+- F7 opens a legend that explains every term.
 
-Bạn cứ gãy kiếm ở +14? Không biết nên nộp cống thanh nào? **ForgeSeer** là overlay đặt ngay trên màn hình game, đọc **tỉ lệ thật** từ chính game và nói cho bạn biết **nên làm gì tiếp theo**.
+The overlay uses the same language as the game. Supported: English, 한국어, 日本語, 简体中文,
+繁體中文, Deutsch, Español, Português (Brasil), Русский, Tiếng Việt. Game terms (outcome names,
+Frenzy, relics, tribute...) use the game's own translations where they exist.
 
-> 🛡️ **Chỉ đọc – công bằng:** không sửa tỉ lệ, không sửa file save, không đoán trước kết quả. Công cụ không chính thức, không liên kết với nhà phát triển ForgeTax.
+## Install
 
-## ✨ Tính năng
+1. Grab `ForgeSeer-<version>-windows.zip` from [Releases](https://github.com/tranhoangtu-it/forgeseer/releases/latest) and unzip it.
+2. Run ForgeTax in windowed or borderless mode. The overlay can't draw over exclusive fullscreen.
+3. Start `ForgeSeer.exe`. It finds the game on its own.
 
-| | Tính năng | Bạn nhận được |
-|---|---|---|
-| 🎯 | **Tỉ lệ thật từng nhát** | Gãy · Hư tổn · Không đổi · Thành công · Xuất sắc – tính bằng chính hàm của game, đã gồm mọi di vật |
-| ⚒️ | **ĐẬP hay DỪNG** | Kỳ vọng 1 nhát + **kế hoạch nhiều nhát** (quy hoạch động, tính cả Xuất Thần) |
-| 🔥 | **Xuất Thần theo tay bạn** | Đo số nhát bạn thật sự đập được mỗi lần Xuất Thần, cảnh báo nổi bật khi đang Xuất Thần |
-| 🐉 | **Cống nạp & tiến độ** | Cống hôm nay, lịch cống các ngày tới, "đủ cho N ngày" hay "chậm X", chọn kiếm nộp tối ưu |
-| 💎 | **Di vật** | Mô phỏng mua / bỏ / đổi từng món, **bảng di vật giảm tỉ lệ gãy** ở +8/+12/+16, ★ món đáng săn |
-| 👻 | **Thương nhân ma** | Chấm Kiếm Sắt, Vảy Rồng, Dây Cót… theo giá trị so với giá |
-| 📋 | **Việc cần làm** | Khung bên phải: từng bước nên làm ngay, theo thứ tự ưu tiên |
-| 🇻🇳 | **Tiếng Việt chuẩn game** | Tên & mô tả di vật chính thức; kiếm gọi theo vị trí (`+8 giá ô 2`, `trên đe`) – kiếm trên đe luôn đứng đầu |
-| 📖 | **Chú giải (F7)** | Giải thích mọi khái niệm ngay trong game |
-| 📈 | **Nhật ký** | Ghi lại từng lượt chơi và từng ngày để so sánh chiến thuật |
+| Key | |
+|---|---|
+| F7 | legend on/off |
+| F8 | hide/show |
+| F9 | drag to move, press again to lock (position is remembered) |
+| F10 | quit |
 
-## 📦 Cài đặt
-
-1. Tải **`ForgeSeer-<phiên bản>-windows.zip`** ở [Releases](https://github.com/tranhoangtu-it/forgeseer/releases/latest) và giải nén.
-2. Mở ForgeTax ở chế độ **Windowed / Borderless** *(overlay không hiện trên Exclusive Fullscreen)*.
-3. Chạy **`ForgeSeer.exe`** – overlay tự gắn vào game, vào chơi là thấy.
-
-### ⌨️ Phím tắt
-
-| Phím | Tác dụng |
-|:---:|---|
-| `F7` | Bật/tắt khung chú giải |
-| `F8` | Ẩn/hiện overlay |
-| `F9` | Kéo để di chuyển (bấm lại để khóa – vị trí được nhớ) |
-| `F10` | Thoát |
-
-### 🐍 Chạy từ mã nguồn
+### From source
 
 ```bash
 pip install frida
-python -m forgeseer            # mở overlay
-python -m forgeseer --no-live  # chỉ đọc file save
-python -m forgeseer --once     # in trạng thái ra console
+python -m forgeseer             # overlay
+python -m forgeseer --no-live   # read the save file only
+python -m forgeseer --once      # print the state to the console
+python -m forgeseer --lang de   # pick a language instead of following the game
 ```
 
-## 💡 Mẹo đi xa hơn (rút ra từ dữ liệu game)
+## How it works
 
-- Đập kiếm cấp cao **trong Xuất Thần** – khi đó kiếm không thể gãy.
-- Săn **Liềm Và Búa** và **Kìm Vảy Rồng** sớm – hai di vật giảm tỉ lệ gãy mạnh nhất.
-- Đừng nộp cống bằng kiếm còn tiềm năng; cống tăng ~1,4–1,5×/ngày, bạn cần vài thanh rất cao.
-- Để dành **Vảy Rồng (Q)** cho nhát rủi ro trên thanh quý nhất, **Dây Cót (R)** để hồi khi nó gãy.
+ForgeSeer uses [Frida](https://frida.re) to attach to `ForgeTax.exe` and calls the game's own
+read-only functions on its main thread about three times a second (save snapshot, odds). Relic
+"what if" checks run on a copy of the campaign, never the real one. If it can't attach, it falls
+back to reading the save file. More detail in [docs/technical-notes.md](docs/technical-notes.md).
 
-## ⚙️ Cách hoạt động
+## Please read
 
-- **Đọc trực tiếp:** dùng [Frida](https://frida.re) gắn vào `ForgeTax.exe`, gọi các hàm *chỉ đọc* của game trên main thread (chụp trạng thái, tính tỉ lệ) ~0,3 giây/lần. Mô phỏng di vật chạy trên **bản sao** campaign, không đụng dữ liệu thật.
-- **Dự phòng:** không gắn được thì đọc file save của game.
-- Chi tiết kỹ thuật: [docs/forgeseer-handoff.md](docs/forgeseer-handoff.md).
+- It only reads. It doesn't change odds, saves or results, and it doesn't try to predict the RNG.
+  This is an unofficial fan tool, not affiliated with the ForgeTax developers.
+- ForgeTax has online leaderboards. ForgeSeer doesn't change outcomes, but decide for yourself
+  whether you're comfortable using a helper there.
+- Antivirus software may flag it because Frida attaches to another process. The source is all
+  here if you'd rather build it yourself.
+- A game update can break live reading until I catch up. The save-file mode keeps working.
 
-## ⚠️ Lưu ý
+## Tiếng Việt
 
-- Phần mềm diệt virus có thể cảnh báo vì Frida gắn vào tiến trình khác – mã nguồn mở để bạn tự kiểm tra hoặc tự build.
-- Game có bảng xếp hạng trực tuyến; ForgeSeer không thay đổi kết quả, nhưng hãy tự cân nhắc việc dùng công cụ hỗ trợ.
-- Bản cập nhật game có thể làm chế độ đọc trực tiếp tạm ngừng cho tới khi ForgeSeer được cập nhật.
+ForgeSeer là overlay mình viết cho ForgeTax: hiện tỉ lệ thật của nhát búa kế tiếp (lấy từ chính
+hàm của game, đã tính mọi di vật), gợi ý đập hay dừng, chọn kiếm nộp cống, di vật nào đáng mua.
+Overlay tự đổi theo ngôn ngữ đang chọn trong game, tiếng Việt dùng đúng thuật ngữ của bản dịch
+chính thức.
 
-## 🌍 English
+Cách dùng: tải bản zip ở [Releases](https://github.com/tranhoangtu-it/forgeseer/releases/latest),
+mở game ở chế độ cửa sổ hoặc không viền, rồi chạy `ForgeSeer.exe`. F7 chú giải, F8 ẩn, F9 di
+chuyển, F10 thoát. Công cụ chỉ đọc, không sửa gì trong game; phần mềm diệt virus có thể cảnh báo
+vì Frida gắn vào tiến trình game.
 
-**ForgeSeer** is an unofficial, **read-only** strategy overlay for the roguelite **ForgeTax** (Windows, Steam).
+## Contributing
 
-- 🎯 **Real next-strike odds** for every sword, computed by the game's own odds function (all relic effects included).
-- ⚒️ **Strike or stop** advice: one-strike expected value plus an **optimal multi-strike plan** (dynamic programming, Frenzy-aware, calibrated to your own Frenzy speed).
-- 🐉 **Tribute planning**: today's quota, the upcoming quota schedule, a pace meter, and an optimal choice of swords to offer.
-- 💎 **Relic advisor**: simulated buy / drop / swap, a **break-reduction ranking** at +8/+12/+16, ghost-merchant value checks.
-- 📋 An **action panel** listing exactly what to do next.
+Bug reports and ideas are welcome, see [CONTRIBUTING.md](CONTRIBUTING.md). Changes are listed in
+[CHANGELOG.md](CHANGELOG.md).
 
-It attaches with Frida and only calls the game's read-only functions on simulated copies — it never changes odds, saves or outcomes, and never predicts RNG. The UI is in Vietnamese (official in-game Vietnamese terms). Download from [Releases](https://github.com/tranhoangtu-it/forgeseer/releases/latest), run ForgeTax windowed/borderless, then launch `ForgeSeer.exe`.
-
-## 🤝 Đóng góp
-
-Mọi góp ý, báo lỗi, ý tưởng đều được chào đón – xem [CONTRIBUTING.md](CONTRIBUTING.md) và [CHANGELOG.md](CHANGELOG.md).
-Nếu ForgeSeer giúp bạn đi xa hơn, hãy để lại một ⭐ cho repo!
-
-## 📄 Giấy phép
+## License
 
 [MIT](LICENSE)

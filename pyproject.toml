@@ -1,7 +1,7 @@
 [project]
 name = "forgeseer"
 version = "1.0.0"
-description = "ForgeSeer – overlay chiến thuật chỉ đọc cho game ForgeTax."
+description = "Read-only strategy overlay for ForgeTax"
 requires-python = ">=3.10"
 
 [project.optional-dependencies]
