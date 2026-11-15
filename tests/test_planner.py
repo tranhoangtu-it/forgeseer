@@ -54,3 +54,15 @@ def test_more_fever_strikes_raise_expected_value_when_fever_ready():
 def test_missing_grade_returns_none():
     assert plan_sword(grade=50, charge=0, normal=_table(SAFE), fever=_table(FEVER),
                       multiplier=1.5) is None
+
+
+def test_safe_only_plan_stops_at_first_grade_that_can_break():
+    normal = {g: (SAFE if g < 5 else DEADLY) for g in range(30)}
+    no_fever = {g: DEADLY for g in range(30)}
+
+    safe = plan_sword(3, 0, normal, _table(FEVER), 1.5, fever_strikes=1, safe_only=True)
+    full = plan_sword(3, 0, normal, _table(FEVER), 1.5, fever_strikes=1)
+
+    assert 1.0 < safe.ratio <= 1.5 ** 3      # không vượt quá +6 (từ +5 chỉ có thể +2 khi đập)
+    assert full.ratio >= safe.ratio
+    assert plan_sword(10, 0, no_fever, _table(FEVER), 1.5, safe_only=True).ratio == 1.0

@@ -38,16 +38,18 @@ def _transitions(o: SwordOdds, g: int) -> list[tuple[float, int]]:
     return [(o.success, g + 1), (o.great, g + 2), (o.hold, g), (o.damage, max(g - 1, 0))]
 
 
-def plan_sword(grade: int, charge: int, normal: GradeOdds, fever: GradeOdds,
-               multiplier: float, fever_strikes: int = DEFAULT_FEVER_STRIKES,
-               horizon: int = HORIZON) -> Plan | None:
-    if grade not in normal:
-        return None
+def _model(grade: int, normal: GradeOdds, fever: GradeOdds, multiplier: float,
+           fever_strikes: int, safe_only: bool = False):
+    """Các hàm DP: (best, strike) theo giá trị tương đối với ``grade``.
 
+    ``safe_only``: chỉ cho phép nhát thường không thể gãy (và đợt Xuất Thần) -> dừng ở grade
+    đầu tiên có rủi ro gãy.
+    """
     def rel(g: int) -> float:
         return multiplier ** (g - grade)
 
-    def fever_burst(g: int) -> dict[int, float]:
+    @lru_cache(maxsize=None)
+    def fever_burst(g: int) -> tuple[tuple[int, float], ...]:
         dist = {g: 1.0}
         for _ in range(max(fever_strikes, 1)):
             nxt: dict[int, float] = {}
@@ -59,21 +61,33 @@ def plan_sword(grade: int, charge: int, normal: GradeOdds, fever: GradeOdds,
                 for q, g2 in _transitions(o, gg):
                     nxt[g2] = nxt.get(g2, 0.0) + p * q
             dist = nxt
-        return dist
+        return tuple(dist.items())
 
     @lru_cache(maxsize=None)
     def best(g: int, c: int, h: int) -> float:
         stop = rel(g)
         if h == 0 or g not in normal:
             return stop
+        if safe_only and c < FEVER_THRESHOLD and normal[g].destruction > 0:
+            return stop
         return max(stop, strike(g, c, h))
 
     @lru_cache(maxsize=None)
     def strike(g: int, c: int, h: int) -> float:
         if c >= FEVER_THRESHOLD:
-            return sum(p * best(g2, 0, h - 1) for g2, p in fever_burst(g).items())
+            return sum(p * best(g2, 0, h - 1) for g2, p in fever_burst(g))
         return sum(q * best(g2, c + 1, h - 1) for q, g2 in _transitions(normal[g], g))
 
+    return best, strike
+
+
+def plan_sword(grade: int, charge: int, normal: GradeOdds, fever: GradeOdds,
+               multiplier: float, fever_strikes: int = DEFAULT_FEVER_STRIKES,
+               horizon: int = HORIZON, safe_only: bool = False) -> Plan | None:
+    """``safe_only=True``: kỳ vọng khi chỉ đập nhát không thể gãy (ước lượng thận trọng)."""
+    if grade not in normal:
+        return None
+    best, strike = _model(grade, normal, fever, multiplier, fever_strikes, safe_only)
     c0 = min(max(charge, 0), FEVER_THRESHOLD)
     value = best(grade, c0, horizon)
     verdict = "ĐẬP" if strike(grade, c0, horizon) > 1.0 + EPSILON else "DỪNG"

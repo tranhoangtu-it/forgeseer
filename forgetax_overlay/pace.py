@@ -1,9 +1,11 @@
-"""Tiến độ khế ước: giá trị kỳ vọng của kiếm đang giữ so với cống của vài ngày tới.
+"""Tiến độ khế ước: giá trị ước tính của kiếm đang giữ so với cống của vài ngày tới.
 
-Giá trị kỳ vọng mỗi kiếm = giá trị x ``Plan.ratio`` (kế hoạch DP với bảng tỉ lệ theo grade của
-game; không có bảng -> chỉ tính giá trị hiện tại). Cộng thêm ước lượng kiếm mới mỗi ngày:
-``FRESH_SWORDS_PER_DAY`` kiếm +0 (giá trị ``FRESH_SWORD_VALUE``) x tỉ lệ kế hoạch của kiếm +0.
-Đây là ước lượng trung bình, không đoán kết quả từng nhát.
+Ước tính mỗi kiếm = giá trị x kỳ vọng khi CHỈ đập nhát không thể gãy (``plan_sword(...,
+safe_only=True)``; bảng tỉ lệ theo grade của game; không có bảng -> giá trị hiện tại). Không dùng
+kỳ vọng của kế hoạch tối ưu (``Plan.ratio``): với bảng thật kiếm +0 có kỳ vọng ~x80 do vài ca hiếm
+lên rất cao (trung vị lại = 0 vì kế hoạch đó dồn hết vào rủi ro) -> tiến độ ảo. Cộng thêm kiếm
+mới mỗi ngày: ``FRESH_SWORDS_PER_DAY`` kiếm +0 (giá trị ``FRESH_SWORD_VALUE``) x cùng hệ số.
+Không đoán kết quả từng nhát.
 
 Giả định (chưa xác minh): mỗi ngày nhận ``FRESH_SWORDS_PER_DAY`` kiếm +0 mới.
 """
@@ -45,7 +47,7 @@ def schedule_line(today: int, schedule: Sequence[float]) -> str:
 
 
 def _ratios(table: GradeOddsTable | None, multiplier: float, fever_strikes: int):
-    """Hàm (grade, tích lực) -> Plan.ratio có cache; 1.0 khi không có bảng/không lập được kế hoạch."""
+    """Hàm (grade, tích lực) -> kỳ vọng chỉ đập nhát an toàn, có cache; 1.0 khi không có bảng."""
     cache: dict[tuple[int, int], float] = {}
 
     def ratio(grade: int, charge: int) -> float:
@@ -53,7 +55,8 @@ def _ratios(table: GradeOddsTable | None, multiplier: float, fever_strikes: int)
             return 1.0
         key = (grade, charge)
         if key not in cache:
-            plan = plan_sword(grade, charge, table.normal, table.fever, multiplier, fever_strikes)
+            plan = plan_sword(grade, charge, table.normal, table.fever, multiplier,
+                              fever_strikes, safe_only=True)
             cache[key] = plan.ratio if plan is not None else 1.0
         return cache[key]
     return ratio
@@ -61,24 +64,24 @@ def _ratios(table: GradeOddsTable | None, multiplier: float, fever_strikes: int)
 
 def holdings_expected(swords: Iterable[Sword], table: GradeOddsTable | None, multiplier: float,
                       fever_strikes: int = DEFAULT_FEVER_STRIKES) -> float:
-    """Σ giá trị x Plan.ratio của các kiếm (đã lọc còn trong tay)."""
+    """Σ giá trị x kỳ vọng nhát an toàn của các kiếm (đã lọc còn trong tay)."""
     ratio = _ratios(table, multiplier, fever_strikes)
     return sum(sw.value * ratio(sw.grade, sw.charge) for sw in swords)
 
 
 def incoming_per_day(table: GradeOddsTable | None, multiplier: float,
                      fever_strikes: int = DEFAULT_FEVER_STRIKES) -> float:
-    """Ước lượng giá trị kỳ vọng kiếm mới nhận mỗi ngày."""
+    """Ước lượng giá trị (nhát an toàn) kiếm mới nhận mỗi ngày."""
     ratio = _ratios(table, multiplier, fever_strikes)(0, 0)
     return FRESH_SWORDS_PER_DAY * FRESH_SWORD_VALUE * ratio
 
 
 @dataclass(frozen=True)
 class Pace:
-    available: float      # kỳ vọng kiếm đang giữ + kiếm mới trong ``days`` ngày tới
+    available: float      # ước tính kiếm đang giữ + kiếm mới trong ``days`` ngày tới
     needed: float         # cống còn thiếu hôm nay + cống ``days`` ngày tới
     days: int             # số ngày tới được so (<= PACE_DAYS, theo dữ liệu có được)
-    covered_days: int     # số ngày tới liên tiếp đủ cống theo kỳ vọng
+    covered_days: int     # số ngày tới liên tiếp đủ cống theo ước tính
 
     @property
     def shortfall(self) -> float:
@@ -95,7 +98,7 @@ class Pace:
 
 def evaluate_pace(expected: float, incoming_per_day: float, need_today: float,
                   schedule: Sequence[float], days: int = PACE_DAYS) -> Pace | None:
-    """So kỳ vọng với cống cộng dồn; ``schedule[i]`` = cống ngày (hôm nay + i + 1)."""
+    """So ước tính với cống cộng dồn; ``schedule[i]`` = cống ngày (hôm nay + i + 1)."""
     if not schedule:
         return None
     need = max(need_today, 0.0)
@@ -118,7 +121,7 @@ def contract_pace(live: list[Sword], need_today: float, schedule: tuple[float, .
 
 
 def pace_line(pace: Pace) -> Line:
-    detail = f" (kỳ vọng {compact(pace.available)} / cần {compact(pace.needed)})"
+    detail = f" (ước tính {compact(pace.available)} / cần {compact(pace.needed)})"
     if pace.behind:
         return f"Chậm: thiếu {pace.shortfall:,.0f} cho {pace.days} ngày tới{detail}", WARN
     return f"Tiến độ: đủ cho {pace.covered_days} ngày tới{detail}", GOOD
