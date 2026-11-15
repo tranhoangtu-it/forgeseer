@@ -16,6 +16,7 @@ from .fever_calibration import DEFAULT_FEVER_STRIKES
 from .planner import plan_sword
 from .save_reader import MerchantOffer, RunState
 from .shop_advice import target_sword
+from .text_format import fmt_int, fmt_pct
 
 BASE_SWORD_VALUE = 320.0   # ForgeEnhancementBalance.baseValue
 SWORD_IDS = {"sword", "worldtree"}
@@ -50,15 +51,15 @@ def _worth(offer: MerchantOffer, state: RunState, odds: OddsMap, multiplier: flo
         plan = (plan_sword(offer.grade, 0, table.normal, table.fever, multiplier, fever_strikes)
                 if table is not None and table.valid else None)
         if plan is None:
-            return base, f"giá trị gốc {base:,.0f}"
-        return base * plan.ratio, f"kỳ vọng ~{base * plan.ratio:,.0f} nếu rèn tối ưu"
+            return base, f"giá trị gốc {fmt_int(base)}"
+        return base * plan.ratio, f"kỳ vọng ~{fmt_int(base * plan.ratio)} nếu rèn tối ưu"
     if offer.id == "ward" and top is not None:
         p = odds[top.serial][0].destruction
-        return top.value * p, f"cứu ~{top.value * p:,.0f} cho {top.tag} (gãy {p:.0%}/nhát)"
+        return top.value * p, f"cứu ~{fmt_int(top.value * p)} cho kiếm {top.tag} (Gãy {fmt_pct(p)} mỗi nhát)"
     if offer.id == "rewind" and top is not None:
         if odds[top.serial][0].destruction <= 0:
-            return 0.0, f"{top.tag} chưa có rủi ro gãy"
-        return float(top.value), f"bảo hiểm tới {top.value:,} cho {top.tag} (dùng sau khi gãy)"
+            return 0.0, f"kiếm {top.tag} chưa có rủi ro Gãy"
+        return float(top.value), f"bảo hiểm tới {fmt_int(top.value)} cho kiếm {top.tag} (dùng sau khi gãy)"
     return None, ""
 
 

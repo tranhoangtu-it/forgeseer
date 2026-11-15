@@ -1,6 +1,6 @@
 from forgetax_overlay.advisor import GradeOddsTable, SwordOdds
-from forgetax_overlay.pace import (compact, evaluate_pace, holdings_expected, pace_line,
-                                   risk_hint, schedule_line)
+from forgetax_overlay.pace import (evaluate_pace, pace_detail, holdings_expected, pace_line,
+                                   risk_hint, schedule_lines)
 from forgetax_overlay.planner import Plan
 from forgetax_overlay.save_reader import Sword
 
@@ -15,21 +15,15 @@ def _sword(serial, value, grade, fever=0.0, charge=0) -> Sword:
                  rack=0, damage_count=0, fever_remaining=fever, charge=charge)
 
 
-def test_compact_numbers():
-    assert compact(290000) == "290k"
-    assert compact(1800) == "1.8k"
-    assert compact(1280000) == "1.28M"
-    assert compact(950) == "950"
+def test_schedule_lines_list_days_from_tomorrow_three_per_row():
+    rows = schedule_lines(15, (290000.0, 410000.0, 534000.0, 824000.0))
+
+    assert rows == ["Cống sắp tới: ngày 16: 290.000 · ngày 17: 410.000 · ngày 18: 534.000",
+                    "  ngày 19: 824.000"]
 
 
-def test_schedule_line_lists_days_from_tomorrow():
-    line = schedule_line(15, (290000.0, 410000.0, 534000.0))
-
-    assert line == "Cống sắp tới: d16 290k, d17 410k, d18 534k"
-
-
-def test_schedule_line_empty_without_data():
-    assert schedule_line(15, ()) == ""
+def test_schedule_lines_empty_without_data():
+    assert schedule_lines(15, ()) == []
 
 
 def test_pace_covers_days_while_resources_last():
@@ -65,8 +59,9 @@ def test_pace_line_texts():
     behind = evaluate_pace(5000, 500, 1000, (2000, 3000, 10000))
     ahead = evaluate_pace(50000, 0, 0, (2000, 3000, 4000))
 
-    assert pace_line(behind)[0].startswith("Chậm: thiếu 9,500 cho 3 ngày tới")
-    assert pace_line(ahead)[0].startswith("Tiến độ: đủ cho 3 ngày tới")
+    assert pace_line(behind)[0] == "Chậm tiến độ: thiếu 9.500 cống cho 3 ngày tới"
+    assert pace_line(ahead)[0] == "Tiến độ: đủ cống cho 3 ngày tới"
+    assert pace_detail(behind) == "Ước tính sẽ có 6.500 / cần 16.000"
 
 
 def test_holdings_expected_uses_plan_ratio_or_value():

@@ -23,7 +23,7 @@ def test_buy_line_with_free_slot_uses_buy_simulation():
 
     text, tag = buy_line("pin", _sword(), ODDS, sim, 1.5, {})
 
-    assert "gãy 36%->25%" in text and tag == "good"
+    assert "Gãy 36% → 25%" in text and tag == "good"
 
 
 def test_buy_line_with_full_shelf_picks_best_swap():
@@ -31,8 +31,8 @@ def test_buy_line_with_full_shelf_picks_best_swap():
 
     text, _ = buy_line("pin", _sword(), ODDS, sim, 1.5, {"knot": "Nút Thắt"})
 
-    assert "đổi Nút Thắt" in text
-    assert "gãy 36%->25%" in text
+    assert "Nếu mua (bỏ Nút Thắt)" in text
+    assert "Gãy 36% → 25%" in text
 
 
 def test_drop_line_marks_harmless_relic_as_droppable():
@@ -48,7 +48,7 @@ def test_drop_line_shows_ev_loss_for_useful_relic():
 
     text, tag = drop_line("nail", _sword(), ODDS, sim, 1.5, best=None)
 
-    assert "bỏ: EV x0.93->" in text and tag == "warn"
+    assert "Nếu bỏ: kỳ vọng ×0,93 → " in text and tag == "warn"
 
 
 def test_best_drop_is_relic_with_smallest_ev_loss():
@@ -74,7 +74,7 @@ def test_grade_line_shows_break_odds_at_target_grades():
 
     text, tag = grade_line("pin", _sword(), sim, 1.5)
 
-    assert "@+8: gãy 10%->10%" in text and "@+12: gãy 40%->30%" in text
+    assert "ở cấp +8: gãy 10% → 10%" in text and "ở cấp +12: gãy 40% → 30%" in text
     assert tag == "good"
 
 
@@ -85,7 +85,7 @@ def test_grade_line_for_full_shelf_uses_swap_picked_for_target():
 
     text, _ = grade_line("pin", _sword(), sim, 1.5)
 
-    assert "@+12: gãy 40%->30%" in text
+    assert "ở cấp +12: gãy 40% → 30%" in text
 
 
 def test_grade_line_none_without_grade_data():

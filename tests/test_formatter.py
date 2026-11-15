@@ -32,9 +32,7 @@ def _texts(lines):
 def test_shows_round_progress_and_wallet():
     text = _texts(format_state(_state()))
 
-    assert "Vòng 7/24" in text
-    assert "còn 17" in text
-    assert "9,000" in text
+    assert "Ngày 7/24 (còn 17 ngày) · Vàng: 9.000" in text
 
 
 def test_warns_when_tribute_exceeds_wallet():
@@ -52,19 +50,20 @@ def test_lists_only_live_swords_sorted_by_value():
     )
     text = _texts(format_state(_state(swords=swords)))
 
-    assert text.index("9,000") < text.index("   500")
-    assert "99,999" not in text and "88,888" not in text
+    assert text.index("giá trị 9.000") < text.index("giá trị 500")
+    assert "99.999" not in text and "88.888" not in text
 
 
 def test_sword_line_shows_success_rate_and_heated_flag():
     text = _texts(format_state(_state(swords=(_sword(heated=True),))))
 
-    assert "75%" in text
-    assert "NUNG" in text
+    assert "Tỉ lệ thành công: 75%" in text
+    assert "đang nung" in text
 
 
 def test_shop_section_only_while_shopping():
-    assert "Shop" not in _texts(format_state(_state(shopping=False)))
+    assert "Cửa hàng di vật" not in _texts(format_state(_state(shopping=False)))
+    assert "Cửa hàng di vật" in _texts(format_state(_state(shopping=True)))
     assert "hold" in _texts(format_state(_state(shopping=True)))
 
 
@@ -72,22 +71,22 @@ def test_relics_and_shop_use_readable_names():
     names = {"nail": "Đinh", "hold": "Giữ"}
     text = _texts(format_state(_state(shopping=True), names))
 
-    assert "Đinh r2" in text
-    assert "Giữ - 1" in text
+    assert "Đinh (bậc 2)" in text
+    assert "Giữ · giá 1" in text
 
 
 def test_sword_line_shows_peak_damage_and_fever():
     sword = _sword(value=800, peak=1200, damage_count=2, fever_remaining=3.0)
     text = _texts(format_state(_state(swords=(sword,))))
 
-    assert "đỉnh 1,200" in text
-    assert "hỏng 2" in text
-    assert "FEVER" in text
+    assert "(từng đạt 1.200)" in text
+    assert "Hư tổn: 2 lần" in text
+    assert "ĐANG XUẤT THẦN" in text
 
 
 def test_consumables_count_shown_when_present():
-    assert "Tiêu hao 2" in _texts(format_state(_state(consumables=2)))
-    assert "Tiêu hao" not in _texts(format_state(_state(consumables=0)))
+    assert "Vật phẩm tiêu hao: 2" in _texts(format_state(_state(consumables=2)))
+    assert "tiêu hao" not in _texts(format_state(_state(consumables=0)))
 
 
 def test_sword_odds_line_shows_verdict_and_uses_fever_odds():
@@ -101,7 +100,8 @@ def test_sword_odds_line_shows_verdict_and_uses_fever_odds():
     lines = format_state(_state(swords=(calm, hot)), odds=odds, multiplier=1.5)
     text = _texts(lines)
 
-    assert "gãy 36%" in text and "DỪNG" in text
+    assert "Gãy 36% · Hư tổn 4% · Không đổi 6% · Thành công 50% · Xuất sắc 4%" in text
+    assert "→ DỪNG · kỳ vọng 1 nhát ×0,93" in text
     assert "ĐẬP (an toàn)" in text  # thanh đang fever dùng tỉ lệ fever
     assert any(tag == "warn" and "DỪNG" in t for t, tag in lines)
 
@@ -110,7 +110,7 @@ def test_shop_items_show_descriptions():
     text = _texts(format_state(_state(shopping=True), {"hold": "Kìm Giữ"},
                                descriptions={"hold": "Giữ nguyên 1 lần."}))
 
-    assert "Kìm Giữ - 1" in text
+    assert "Kìm Giữ · giá 1" in text
     assert "Giữ nguyên 1 lần." in text
 
 
@@ -124,8 +124,8 @@ def test_shop_simulation_shows_effect_on_most_valuable_sword():
     text = _texts(format_state(state, odds={11: (now, now)}, multiplier=1.5,
                                shop_sim=ShopSimulation(buy={"nail": {11: better}})))
 
-    assert "+5 dưới sàn: gãy 36%->25%" in text
-    assert "EV x0.93->" in text
+    assert "Nếu mua, kiếm +5 dưới sàn: Gãy 36% → 25%" in text
+    assert "kỳ vọng ×0,93 → " in text
 
 
 def test_shop_simulation_reports_no_odds_change():
@@ -137,7 +137,7 @@ def test_shop_simulation_reports_no_odds_change():
     text = _texts(format_state(state, odds={11: (now, now)},
                                shop_sim=ShopSimulation(buy={"coin": {11: now}})))
 
-    assert "không đổi tỉ lệ" in text
+    assert "Nếu mua, kiếm +5 dưới sàn: tỉ lệ không đổi" in text
 
 
 def test_relic_section_shows_drop_advice():
@@ -151,8 +151,8 @@ def test_relic_section_shows_drop_advice():
     text = _texts(format_state(state, {"knot": "Nút Thắt"}, odds={11: (now, now)}, shop_sim=sim))
 
     assert "Nút Thắt" in text
-    assert "có thể bỏ" in text and "nên bỏ" in text
-    assert "bỏ: EV x0.93->" in text
+    assert "có thể bỏ" in text and "nên bỏ nhất" in text
+    assert "Nếu bỏ: kỳ vọng ×0,93 → " in text
 
 
 def test_none_state_shows_waiting_message():
@@ -164,7 +164,7 @@ def test_none_state_shows_waiting_message():
 def test_tribute_line_shows_tomorrow_quota():
     text = _texts(format_state(_state(), quota=800, next_quota=4350))
 
-    assert "ngày mai 4,350" in text
+    assert "Cống sắp tới: ngày 8: 4.350" in text
 
 
 def test_run_summary_appended_when_given():
@@ -181,13 +181,14 @@ def test_relic_rank_section_stars_unsold_shop_offer():
     text = _texts(format_state(_state(shopping=True), names={"hold": "Đá Phong Ấn"},
                                relic_rank=rank))
 
-    assert "Relic giảm gãy (@+8/+12/+16, chỉ hiệu ứng cố định):" in text
-    assert "★ Đá Phong Ấn: gãy 5.0%->4.0% | 15.0%->12.0% | 25.0%->20.0%" in text
-    assert "Có điều kiện (không mô phỏng được):" in text
+    assert "Di vật giảm Gãy (tỉ lệ Gãy ở cấp +8 / +12 / +16):" in text
+    assert ("  ★ Đá Phong Ấn\n      Gãy +8: 5,0% → 4,0% · +12: 15,0% → 12,0% · "
+            "+16: 25,0% → 20,0%") in text
+    assert "Di vật có điều kiện (không mô phỏng được):" in text
 
 
 def test_relic_rank_section_hidden_without_simulation():
-    assert "Relic giảm gãy" not in _texts(format_state(_state()))
+    assert "Di vật giảm Gãy" not in _texts(format_state(_state()))
 
 
 def test_tribute_area_shows_schedule_and_pace():
@@ -195,6 +196,7 @@ def test_tribute_area_shows_schedule_and_pace():
                          schedule=(8700.0, 13200.0, 20100.0))
     text = _texts(lines)
 
-    assert "ngày mai 8,700" in text
-    assert "Cống sắp tới: d8 8.7k, d9 13.2k, d10 20.1k" in text
-    assert "Chậm: thiếu" in text
+    assert "Cống hôm nay: cần 2.000 · đã nộp 0 → ĐỦ nếu nộp" in text
+    assert "Cống sắp tới: ngày 8: 8.700 · ngày 9: 13.200 · ngày 10: 20.100" in text
+    assert "Chậm tiến độ: thiếu" in text
+    assert "Ước tính sẽ có" in text

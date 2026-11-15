@@ -12,6 +12,7 @@ from typing import Any
 
 from .advisor import SwordOdds
 from .relic_names import display_name
+from .text_format import ARROW, SEP, fmt_pct
 
 TITLE, NORMAL, GOOD, DIM = "title", "normal", "good", "dim"
 Line = tuple[str, str]
@@ -94,12 +95,12 @@ def top_offer(rank: RelicRank | None, offer_ids: list[str]) -> RankedRelic | Non
 
 
 def _pct(before: SwordOdds, after: SwordOdds) -> str:
-    return f"{before.destruction:.1%}->{after.destruction:.1%}"
+    return f"{fmt_pct(before.destruction, 1)}{ARROW}{fmt_pct(after.destruction, 1)}"
 
 
 def _deltas(r: RankedRelic) -> str:
-    return " | ".join(_pct(r.before[g], r.after[g]) for g in RANK_GRADES
-                      if g in r.before and g in r.after)
+    return SEP.join(f"+{g}: {_pct(r.before[g], r.after[g])}" for g in RANK_GRADES
+                    if g in r.before and g in r.after)
 
 
 def _owned_lines(rank: RelicRank, names: dict[str, str]) -> list[Line]:
@@ -109,13 +110,13 @@ def _owned_lines(rank: RelicRank, names: dict[str, str]) -> list[Line]:
         removed = after.get(PRIMARY_GRADE)
         if base is None or removed is None or removed.destruction - base.destruction <= ODDS_EPSILON:
             continue
-        lines.append((f"  (đang có) {display_name(rid, names)}: bỏ đi gãy @+{PRIMARY_GRADE} "
-                      f"{_pct(base, removed)}", DIM))
+        lines.append((f"  (đang có) {display_name(rid, names)}: nếu bỏ, Gãy ở cấp "
+                      f"+{PRIMARY_GRADE}: {_pct(base, removed)}", DIM))
     return lines
 
 
 def conditional_lines(names: dict[str, str]) -> list[Line]:
-    text = ("Có điều kiện (không mô phỏng được): "
+    text = ("Di vật có điều kiện (không mô phỏng được): "
             + ", ".join(display_name(rid, names) for rid in CONDITIONAL_IDS))
     return [(f"  {row}", DIM) for row in textwrap.wrap(text, LINE_WIDTH)]
 
@@ -125,21 +126,25 @@ def relic_rank_lines(rank: RelicRank | None, names: dict[str, str],
     """Khung "Relic giảm gãy"; ★ = món đang bán. Rỗng khi chưa có mô phỏng (không LIVE)."""
     if rank is None or not rank.baseline:
         return []
-    shelf = " - kệ đầy: phải bỏ 1 relic" if rank.shelf_full else ""
-    lines: list[Line] = [(f"Relic giảm gãy (@+8/+12/+16, chỉ hiệu ứng cố định):{shelf}", TITLE)]
+    lines: list[Line] = [("Di vật giảm Gãy (tỉ lệ Gãy ở cấp +8 / +12 / +16):", TITLE),
+                         ("  Chỉ tính hiệu ứng cố định · ★ = đang bán", DIM)]
+    if rank.shelf_full:
+        lines.append(("  Hết ô di vật: mua thêm thì phải bỏ 1 món", DIM))
     for r in rank_relics(rank):
         offered = r.id in offer_ids
         star = "★ " if offered else ""
-        lines.append((f"  {star}{display_name(r.id, names)}: gãy {_deltas(r)}",
-                      GOOD if offered else NORMAL))
+        tag = GOOD if offered else NORMAL
+        lines += [(f"  {star}{display_name(r.id, names)}", tag), (f"      Gãy {_deltas(r)}", DIM)]
     return lines + _owned_lines(rank, names) + conditional_lines(names)
 
 
-def star_step(rank: RelicRank | None, offer_ids: list[str], names: dict[str, str]) -> Line | None:
-    """Bước "★ Mua <tên>: giảm gãy @+12 a%->b%" cho món đang bán nằm trong top giảm gãy."""
+def star_step(rank: RelicRank | None, offer_ids: list[str], names: dict[str, str]) -> list[Line]:
+    """Bước "★ Mua di vật <tên>" + dòng phụ "Gãy ở cấp +12: a% → b%" cho món đang bán nằm
+    trong top giảm gãy; rỗng nếu không có."""
     best = top_offer(rank, offer_ids)
     if best is None or PRIMARY_GRADE not in best.after:
-        return None
-    shelf = " (kệ đầy: bỏ 1 relic)" if rank is not None and rank.shelf_full else ""
-    return (f"★ Mua {display_name(best.id, names)}: giảm gãy @+{PRIMARY_GRADE} "
-            f"{_pct(best.before[PRIMARY_GRADE], best.after[PRIMARY_GRADE])}{shelf}", GOOD)
+        return []
+    shelf = f"{SEP}hết ô: bỏ 1 món" if rank is not None and rank.shelf_full else ""
+    return [(f"★ Mua di vật {display_name(best.id, names)}", GOOD),
+            (f"   Gãy ở cấp +{PRIMARY_GRADE}: "
+             f"{_pct(best.before[PRIMARY_GRADE], best.after[PRIMARY_GRADE])}{shelf}", DIM)]

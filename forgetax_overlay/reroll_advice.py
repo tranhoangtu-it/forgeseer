@@ -10,6 +10,8 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+from .text_format import fmt_int
+
 GOOD, DIM = "good", "dim"
 Line = tuple[str, str]
 FREE_MARKERS = ("MIỄN PHÍ", "FREE")
@@ -36,7 +38,8 @@ def reroll_line(cost: RerollCost | None, wallet: int, has_good_offer: bool) -> L
     if cost is None or has_good_offer:
         return None
     if cost.free:
-        return "Máy relic: không món nào tăng EV -> đổi lượt (miễn phí)", GOOD
+        return "Đổi hàng di vật (miễn phí): không món nào có lợi", GOOD
     if cost.price > 0 and wallet >= cost.price * PLENTIFUL_GOLD_FACTOR:
-        return f"Máy relic: không món nào tăng EV -> đổi lượt ({cost.price:,} G, vàng dư)", DIM
+        return (f"Đổi hàng di vật ({fmt_int(cost.price)} G, đang dư vàng): "
+                "không món nào có lợi", DIM)
     return None

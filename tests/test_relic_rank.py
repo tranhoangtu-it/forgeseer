@@ -71,12 +71,12 @@ def test_section_lists_deltas_stars_offers_and_conditional_line():
     lines = relic_rank_lines(parse_relic_rank(RAW), names, ["seal"])
     text = "\n".join(t for t, _ in lines)
 
-    assert lines[0][0].startswith("Relic giảm gãy (@+8/+12/+16, chỉ hiệu ứng cố định):")
-    assert "kệ đầy" in lines[0][0]
-    assert "  Kìm Vảy Rồng: gãy 5.0%->3.8% | 15.0%->11.3% | 25.0%->18.8%" in text
-    assert "★ Nút Thắt Đen: gãy 5.0%->4.3%" in text
-    assert "Đai Sắt" in text and "bỏ đi" in text
-    assert "Có điều kiện (không mô phỏng được):" in text
+    assert lines[0][0] == "Di vật giảm Gãy (tỉ lệ Gãy ở cấp +8 / +12 / +16):"
+    assert "Hết ô di vật" in text
+    assert "  Kìm Vảy Rồng\n      Gãy +8: 5,0% → 3,8% · +12: 15,0% → 11,3% · +16: 25,0% → 18,8%" in text
+    assert "  ★ Nút Thắt Đen\n      Gãy +8: 5,0% → 4,3%" in text
+    assert "Đai Sắt" in text and "nếu bỏ" in text
+    assert "Di vật có điều kiện (không mô phỏng được):" in text
     assert "Bùa Cháy Sém" in text
     assert "coin" not in text
 
@@ -92,9 +92,11 @@ def test_conditional_ids_cover_requested_relics():
 
 
 def test_star_step_mentions_reduction_at_12():
-    text, tag = star_step(parse_relic_rank(RAW), ["nail", "seal"], {"seal": "Nút Thắt Đen"})
+    (text, tag), (detail, _) = star_step(parse_relic_rank(RAW), ["nail", "seal"],
+                                         {"seal": "Nút Thắt Đen"})
 
-    assert text.startswith("★ Mua Nút Thắt Đen: giảm gãy @+12 15.0%->12.8%")
-    assert "kệ đầy" in text
+    assert text == "★ Mua di vật Nút Thắt Đen"
+    assert detail.startswith("   Gãy ở cấp +12: 15,0% → 12,8%")
+    assert "hết ô" in detail
     assert tag == "good"
-    assert star_step(parse_relic_rank(RAW), ["coin"], {}) is None
+    assert star_step(parse_relic_rank(RAW), ["coin"], {}) == []

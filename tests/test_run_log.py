@@ -47,7 +47,8 @@ def test_summary_shows_best_and_last():
 
     text = summary_line(runs)
 
-    assert text == "Lượt chơi: 2 | tốt nhất: ngày 12, G max 15 | gần nhất: ngày 9, G max 13"
+    assert text == ("Đã chơi 2 lượt · tốt nhất: ngày 12, cấp cao nhất +15"
+                    " · gần nhất: ngày 9, cấp cao nhất +13")
     assert summary_line([]) == ""
 
 

@@ -41,7 +41,8 @@ def test_fever_step_is_alert_and_shows_calibrated_strikes():
 
     text, tag = lines[1]
     assert tag == "alert"
-    assert "~9 nhát" in text
+    assert text == "XUẤT THẦN +3 dưới sàn: ĐẬP LIÊN TỤC!"
+    assert lines[2][0] == "   ~9 nhát, không thể gãy"
 
 
 def test_tribute_step_prefers_finished_swords_and_reaches_need():
@@ -86,7 +87,7 @@ def test_identical_safe_swords_grouped_in_one_step():
 
     text = _text(build_steps(_state(swords), odds, 1.5))
 
-    assert "Đập x4 kiếm +0 dưới sàn" in text
+    assert "Đập 4 kiếm +0 dưới sàn (an toàn)" in text
 
 
 def test_shop_and_merchant_purchases_are_listed():
@@ -99,8 +100,8 @@ def test_shop_and_merchant_purchases_are_listed():
     text = _text(build_steps(state, {1: (RISKY, SAFE)}, 1.5, shop_sim=sim,
                              names={"pin": "Kim Ghim", "ward": "Vảy Rồng Nứt"}, merchant=[item]))
 
-    assert "Mua relic Kim Ghim" in text
-    assert "Thương nhân: mua Vảy Rồng Nứt" in text
+    assert "Mua di vật Kim Ghim\n   kỳ vọng ×0,87 → ×1,44 · trả bằng kiếm +0" in text
+    assert "Thương nhân ma: mua Vảy Rồng Nứt (1.100 G)" in text
 
 
 def test_choose_tribute_uses_small_finished_swords_first():
@@ -120,7 +121,7 @@ def test_break_reducing_relic_suggested_when_no_ev_gain_now():
 
     text = _text(build_steps(state, {1: (SAFE, SAFE)}, 1.5, shop_sim=sim, names={"pin": "Kim Ghim"}))
 
-    assert "Cân nhắc relic Kim Ghim" in text and "@+12 gãy 40%->30%" in text
+    assert "Cân nhắc mua di vật Kim Ghim" in text and "ở cấp +12: gãy 40% → 30%" in text
 
 
 def test_tomorrow_quota_compared_with_value_left_after_tribute():
@@ -129,7 +130,8 @@ def test_tomorrow_quota_compared_with_value_left_after_tribute():
 
     text = _text(build_steps(_state(swords), odds, 1.5, quota=3000, next_quota=4350))
 
-    assert "Ngày mai cống 4,350: sau khi nộp còn 640 -> cần tăng x6.8" in text
+    assert "Ngày mai cống 4.350: chưa đủ" in text
+    assert "   Sau khi nộp hôm nay còn 640 → cần tăng ×6,8" in text
 
 
 def test_tomorrow_quota_already_covered():
@@ -138,7 +140,7 @@ def test_tomorrow_quota_already_covered():
 
     text = _text(build_steps(_state(swords), odds, 1.5, quota=3000, next_quota=4350))
 
-    assert "Ngày mai cống 4,350: sau khi nộp còn 9,000 (đủ)" in text
+    assert "Ngày mai cống 4.350: đủ\n   Sau khi nộp hôm nay còn 9.000" in text
 
 
 def test_free_reroll_suggested_when_no_offer_helps():
@@ -149,7 +151,7 @@ def test_free_reroll_suggested_when_no_offer_helps():
     text = _text(build_steps(state, {1: (RISKY, SAFE)}, 1.5, shop_sim=sim,
                              reroll_text="1 LẦN MIỄN PHÍ"))
 
-    assert "đổi lượt (miễn phí)" in text
+    assert "Đổi hàng di vật (miễn phí)" in text
 
 
 def _rank(*ids):
@@ -165,8 +167,8 @@ def test_star_step_for_top_ranked_shop_offer_and_no_reroll():
     text = _text(build_steps(state, {1: (RISKY, SAFE)}, 1.5, names={"seal": "Nút Thắt Đen"},
                              reroll_text="1 LẦN MIỄN PHÍ", relic_rank=_rank("seal")))
 
-    assert "★ Mua Nút Thắt Đen: giảm gãy @+12 15.0%->14.0%" in text
-    assert "đổi lượt" not in text
+    assert "★ Mua di vật Nút Thắt Đen\n   Gãy ở cấp +12: 15,0% → 14,0%" in text
+    assert "Đổi hàng" not in text
 
 
 def test_star_marks_best_purchase_instead_of_duplicating():
@@ -177,7 +179,7 @@ def test_star_marks_best_purchase_instead_of_duplicating():
     text = _text(build_steps(state, {1: (RISKY, SAFE)}, 1.5, shop_sim=sim, names={"pin": "Kim Ghim"},
                              relic_rank=_rank("pin")))
 
-    assert "★ Mua relic Kim Ghim" in text
+    assert "★ Mua di vật Kim Ghim" in text
     assert text.count("Kim Ghim") == 1
 
 
@@ -186,9 +188,9 @@ def test_behind_pace_is_listed_with_schedule():
     lines = build_steps(_state(swords), {1: (SAFE, SAFE)}, 1.5, quota=1000,
                         schedule=(50000.0, 80000.0, 120000.0))
 
-    behind = [line for line in lines if line[0].startswith("Chậm: thiếu")]
+    behind = [line for line in lines if line[0].startswith("Chậm tiến độ: thiếu")]
     assert behind and behind[0][1] == "warn"
-    assert "Ngày mai cống 50,000" in _text(lines)
+    assert "Ngày mai cống 50.000" in _text(lines)
 
 
 def test_behind_pace_pushes_top_sword_with_ward():
@@ -207,7 +209,7 @@ def test_pace_hint_respects_todays_tribute_safety():
                              quota=2500, schedule=(500000.0,), table=_table()))
 
     assert "Đang chậm tiến độ" not in text
-    assert "Chậm: thiếu" in text
+    assert "Chậm tiến độ: thiếu" in text
 
 
 def _table():

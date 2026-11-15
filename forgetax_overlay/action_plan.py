@@ -1,7 +1,8 @@
 """Danh sách các bước nên làm ngay (khung bên phải overlay).
 
-Thứ tự ưu tiên: Xuất Thần -> nộp cống -> đập kiếm (kèm Vảy Rồng/Dây Cót) -> mua relic
+Thứ tự ưu tiên: Xuất Thần -> nộp cống -> đập kiếm (kèm Vảy Rồng/Dây Cót) -> mua di vật
 -> mua hàng Thương nhân ma. Mọi gợi ý dùng lại đúng logic của các phần bên trái.
+Mỗi bước một dòng ngắn; chi tiết (nếu có) nằm ở dòng phụ thụt vào ``DETAIL``.
 """
 from __future__ import annotations
 
@@ -15,6 +16,7 @@ from .reroll_advice import parse_reroll_text, reroll_line
 from .save_reader import RunState, Sword
 from .shop_advice import best_break_reduction, best_purchase, target_sword
 from .sword_section import sword_verdict
+from .text_format import ARROW, SEP, fmt_int, fmt_pct, fmt_ratio, wrap_lines
 from .tribute import choose_tribute, tribute_status
 
 TITLE, NORMAL, GOOD, WARN, DIM = "title", "normal", "good", "warn", "dim"
@@ -23,6 +25,7 @@ Line = tuple[str, str]
 OddsMap = dict[int, tuple[SwordOdds, SwordOdds]]
 MERCHANT_SWORD_NAMES = {"sword": "Kiếm Sắt"}
 MAX_STRIKE_STEPS = 5
+DETAIL = "   "  # thụt đầu dòng phụ của một bước
 
 
 def _future_ratios(verdicts: dict) -> dict[int, float]:
@@ -56,26 +59,29 @@ def _strike_steps(live: list[Sword], verdicts: dict, state: RunState, top: Sword
         sw = members[0]
         safe = " (an toàn)" if "an toàn" in verdict else ""
         if len(members) > 1:
-            steps.append((f"Đập x{len(members)} kiếm +{grade} {sw.where}{safe}", GOOD))
+            steps.append((f"Đập {len(members)} kiếm +{grade} {sw.where}{safe}", GOOD))
             continue
-        extra = ""
+        extra = []
         if not safe and sw is top and state.ward_charges > 0:
-            extra = " - bấm Q (Vảy Rồng) trước"
+            extra.append("Bấm Q (Vảy Rồng) trước")
         plan = verdicts[sw.serial].plan
         if plan is not None and plan.strikes_to_fever <= 2:
-            extra += f" - còn {plan.strikes_to_fever} nhát tới Xuất Thần"
-        steps.append((f"Đập {sw.tag}{safe}{extra}", GOOD))
+            extra.append(f"Còn {plan.strikes_to_fever} nhát nữa tới Xuất Thần")
+        steps.append((f"Đập {sw.tag}{safe}", GOOD))
+        if extra:
+            steps.append((DETAIL + SEP.join(extra), DIM))
     return steps
 
 
-def _tomorrow_line(next_quota: float, left: float) -> Line:
+def _tomorrow_lines(next_quota: float, left: float) -> list[Line]:
     """Cống ngày mai so với giá trị kiếm còn giữ lại: còn phải rèn tăng bao nhiêu lần."""
-    head = f"Ngày mai cống {next_quota:,.0f}: sau khi nộp còn {left:,.0f}"
+    detail = f"{DETAIL}Sau khi nộp hôm nay còn {fmt_int(left)}"
     if left >= next_quota:
-        return head + " (đủ)", DIM
+        return [(f"Ngày mai cống {fmt_int(next_quota)}: đủ", DIM), (detail, DIM)]
+    head = f"Ngày mai cống {fmt_int(next_quota)}: chưa đủ"
     if left <= 0:
-        return head + " -> cần kiếm mới / rèn thêm", WARN
-    return head + f" -> cần tăng x{next_quota / left:.1f}", WARN
+        return [(head, WARN), (f"{detail}{ARROW}cần kiếm mới / rèn thêm", DIM)]
+    return [(head, WARN), (f"{detail}{ARROW}cần tăng {fmt_ratio(next_quota / left, 1)}", DIM)]
 
 
 def _risk_step(top: Sword | None, verdicts: dict, pace: Pace | None, state: RunState,
@@ -92,7 +98,7 @@ def _risk_step(top: Sword | None, verdicts: dict, pace: Pace | None, state: RunS
 
 
 def offered_ids(state: RunState, merchant: list[MerchantItem] | None) -> list[str]:
-    """Id món đang bán chưa mua: máy relic (giờ mua sắm) + Thương nhân ma."""
+    """Id món đang bán chưa mua: cửa hàng di vật (giờ mua sắm) + Thương nhân ma."""
     shop = [o.id for o in state.offers if not o.sold] if state.shopping else []
     return shop + [i.offer.id for i in merchant or [] if not i.offer.sold]
 
@@ -100,7 +106,7 @@ def offered_ids(state: RunState, merchant: list[MerchantItem] | None) -> list[st
 def _shop_steps(state: RunState, top: Sword | None, odds: OddsMap, multiplier: float,
                 sim: ShopSimulation, names: dict[str, str], reroll_text: str,
                 relic_rank: RelicRank | None) -> list[Line]:
-    """Mua relic tăng EV / giảm gãy; ★ = món nằm trong top giảm gãy (không lặp tên 2 lần)."""
+    """Mua di vật tăng kỳ vọng / giảm gãy; ★ = món nằm trong top giảm gãy (không lặp tên 2 lần)."""
     lines: list[Line] = []
     offer_ids = [o.id for o in state.offers if not o.sold]
     starred = top_offer(relic_rank, offer_ids)
@@ -109,22 +115,21 @@ def _shop_steps(state: RunState, top: Sword | None, odds: OddsMap, multiplier: f
     hint = None
     if best is not None:
         offer_id, drop, ev0, ev1 = best
-        swap = f", bỏ {display_name(drop, names)}" if drop else ""
+        swap = f"Bỏ {display_name(drop, names)}{SEP}" if drop else ""
         mark = "★ " if offer_id == star_id else ""
-        lines.append((f"{mark}Mua relic {display_name(offer_id, names)}{swap} "
-                      f"(EV x{ev0:.2f}->{ev1:.2f}; trả bằng kiếm +0)", GOOD))
+        lines += [(f"{mark}Mua di vật {display_name(offer_id, names)}", GOOD),
+                  (f"{DETAIL}{swap}kỳ vọng {fmt_ratio(ev0)}{ARROW}{fmt_ratio(ev1)}"
+                   f"{SEP}trả bằng kiếm +0", DIM)]
     else:
         hint = best_break_reduction(offer_ids, top, sim, multiplier)
         if hint is not None and hint[0] != star_id:
             offer_id, drop, grade, before, after = hint
-            swap = f", bỏ {display_name(drop, names)}" if drop else ""
-            lines.append((f"Cân nhắc relic {display_name(offer_id, names)}{swap}: @+{grade} gãy "
-                          f"{before.destruction:.0%}->{after.destruction:.0%} (lợi khi kiếm lên cao)",
-                          NORMAL))
+            swap = f"Bỏ {display_name(drop, names)}{SEP}" if drop else ""
+            lines += [(f"Cân nhắc mua di vật {display_name(offer_id, names)}", NORMAL),
+                      (f"{DETAIL}{swap}ở cấp +{grade}: gãy {fmt_pct(before.destruction)}{ARROW}"
+                       f"{fmt_pct(after.destruction)} (lợi khi kiếm lên cao)", DIM)]
     if star_id is not None and (best is None or best[0] != star_id):
-        star = star_step(relic_rank, offer_ids, names)
-        if star is not None:
-            lines.append(star)
+        lines += star_step(relic_rank, offer_ids, names)
     if best is None:
         reroll = reroll_line(parse_reroll_text(reroll_text), state.wallet,
                              has_good_offer=hint is not None or star_id is not None)
@@ -154,8 +159,8 @@ def build_steps(state: RunState | None, odds: OddsMap, multiplier: float, quota:
 
     for sw in live:  # 1. Xuất Thần: tận dụng ngay, không thể gãy
         if sw.fever_remaining > 0:
-            lines.append((f">>> XUẤT THẦN {sw.tag}: ĐẬP LIÊN TỤC! (~{fever_strikes} nhát, "
-                          f"không gãy) <<<", ALERT))
+            lines += [(f"XUẤT THẦN {sw.tag}: ĐẬP LIÊN TỤC!", ALERT),
+                      (f"{DETAIL}~{fever_strikes} nhát, không thể gãy", GOOD)]
 
     schedule = schedule or ((next_quota,) if next_quota > 0 else ())
     next_quota = next_quota or (schedule[0] if schedule else 0.0)
@@ -171,7 +176,8 @@ def build_steps(state: RunState | None, odds: OddsMap, multiplier: float, quota:
             lines.append(("Cống hôm nay: đã đủ", DIM))
             left_after = status.holdings
         elif status.shortfall > 0:
-            lines.append((f"Thiếu {status.shortfall:,.0f} cống: đập kiếm để tăng giá trị", WARN))
+            lines += [(f"Thiếu {fmt_int(status.shortfall)} cống", WARN),
+                      (f"{DETAIL}Đập kiếm để tăng giá trị", DIM)]
         else:
             chosen = choose_tribute(live, status.need, _future_ratios(verdicts))
             if chosen:
@@ -179,11 +185,12 @@ def build_steps(state: RunState | None, odds: OddsMap, multiplier: float, quota:
                 ids = ", ".join(s.tag for s in chosen)
                 total = sum(s.value for s in chosen)
                 left_after = status.holdings - total
-                lines.append((f"Cuối ngày nộp cống: {ids} (= {total:,} / cần {status.need:,.0f}) "
-                              f"- giữ, đừng đập liều", GOOD))
+                lines += [(f"Cuối ngày nộp cống: {ids}", GOOD),
+                          (f"{DETAIL}Tổng {fmt_int(total)} / cần {fmt_int(status.need)}"
+                           f"{SEP}giữ lại, đừng đập liều", DIM)]
 
     if next_quota > 0 and left_after is not None:
-        lines.append(_tomorrow_line(next_quota, left_after))
+        lines += _tomorrow_lines(next_quota, left_after)
     hint = _risk_step(top, verdicts, pace, state, reserved)
     if hint is not None:
         lines.append(hint)
@@ -191,19 +198,19 @@ def build_steps(state: RunState | None, odds: OddsMap, multiplier: float, quota:
     if top is not None and state.rewind_charges > 0 and odds[top.serial][0].destruction > 0:
         lines.append((f"Nếu {top.tag} gãy: bấm R (Dây Cót) để hồi", DIM))
 
-    if state.shopping:  # 4. Máy relic
+    if state.shopping:  # 4. Cửa hàng di vật
         lines += _shop_steps(state, top, odds, multiplier, shop_sim or ShopSimulation(), names,
                              reroll_text, relic_rank)
 
     for item in sorted(merchant or [], key=lambda i: i.ratio or 0, reverse=True):  # 5. Thương nhân
         if item.verdict == "MUA":
             name = MERCHANT_SWORD_NAMES.get(item.offer.id) or display_name(item.offer.id, names)
-            lines.append((f"Thương nhân: mua {name} - {item.offer.price:,.0f}", GOOD))
+            lines.append((f"Thương nhân ma: mua {name} ({fmt_int(item.offer.price)} G)", GOOD))
     merchant_ids = [i.offer.id for i in merchant or [] if not i.offer.sold]
     star = star_step(relic_rank, merchant_ids, names)  # hàng Thương nhân nằm trong top giảm gãy
-    if star is not None and star not in lines:
-        lines.append(star)
+    if star and star[0] not in lines:
+        lines += star
 
     if len(lines) == 1:
         lines.append(("Không có việc cần làm ngay", DIM))
-    return lines
+    return wrap_lines(lines)

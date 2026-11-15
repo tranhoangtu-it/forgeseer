@@ -9,6 +9,7 @@ from dataclasses import dataclass
 
 from .advisor import SwordOdds
 from .save_reader import RunState, Sword
+from .text_format import fmt_pct
 
 EPSILON = 1e-9
 
@@ -84,8 +85,8 @@ def tribute_override(sword: Sword, odds: SwordOdds, status: TributeStatus | None
     p_enough = sum(p for p, factor in outcomes if others + sword.value * factor >= status.need)
     if others + sword.value >= status.need:
         if p_enough < 1.0 - EPSILON:
-            return f"DỪNG (đang đủ cống; đập có {1 - p_enough:.0%} rủi ro thiếu)"
+            return f"DỪNG (đang đủ cống; đập thì {fmt_pct(1 - p_enough)} rủi ro thiếu)"
         return None
     if p_enough > 0:
-        return f"ĐẬP (thiếu cống; 1 nhát đủ cống: {p_enough:.0%})"
+        return f"ĐẬP (đang thiếu cống; {fmt_pct(p_enough)} đủ sau 1 nhát)"
     return None

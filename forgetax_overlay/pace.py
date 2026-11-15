@@ -18,6 +18,7 @@ from .advisor import GradeOddsTable, SwordOdds
 from .fever_calibration import DEFAULT_FEVER_STRIKES
 from .planner import EPSILON, Plan, plan_sword
 from .save_reader import Sword
+from .text_format import SEP, fmt_int, fmt_pct, fmt_ratio
 
 GOOD, WARN, DIM = "good", "warn", "dim"
 Line = tuple[str, str]
@@ -30,20 +31,15 @@ RISKY_DESTRUCTION = 0.10        # tỉ lệ gãy từ mức này coi là nhát m
 MAX_SCHEDULE_SHOWN = 6
 
 
-def compact(value: float) -> str:
-    """290000 -> "290k", 1280000 -> "1.28M", 1800 -> "1.8k"."""
-    for size, unit in ((1e6, "M"), (1e3, "k")):
-        if abs(value) >= size:
-            return f"{value / size:.3g}{unit}"
-    return f"{value:.0f}"
+SCHEDULE_PER_ROW = 3
 
 
-def schedule_line(today: int, schedule: Sequence[float]) -> str:
-    """Dòng "Cống sắp tới: d16 290k, ..."; ``schedule[0]`` là cống ngày ``today + 1``."""
-    if not schedule:
-        return ""
-    items = [f"d{today + 1 + i} {compact(q)}" for i, q in enumerate(schedule[:MAX_SCHEDULE_SHOWN])]
-    return "Cống sắp tới: " + ", ".join(items)
+def schedule_lines(today: int, schedule: Sequence[float]) -> list[str]:
+    """"Cống sắp tới: ngày 16: 290.000 · ..." (3 ngày mỗi dòng); ``schedule[0]`` = ngày ``today + 1``."""
+    items = [f"ngày {today + 1 + i}: {fmt_int(q)}"
+             for i, q in enumerate(schedule[:MAX_SCHEDULE_SHOWN])]
+    rows = [SEP.join(items[i:i + SCHEDULE_PER_ROW]) for i in range(0, len(items), SCHEDULE_PER_ROW)]
+    return [("Cống sắp tới: " if i == 0 else "  ") + row for i, row in enumerate(rows)]
 
 
 def _ratios(table: GradeOddsTable | None, multiplier: float, fever_strikes: int):
@@ -121,10 +117,15 @@ def contract_pace(live: list[Sword], need_today: float, schedule: tuple[float, .
 
 
 def pace_line(pace: Pace) -> Line:
-    detail = f" (ước tính {compact(pace.available)} / cần {compact(pace.needed)})"
     if pace.behind:
-        return f"Chậm: thiếu {pace.shortfall:,.0f} cho {pace.days} ngày tới{detail}", WARN
-    return f"Tiến độ: đủ cho {pace.covered_days} ngày tới{detail}", GOOD
+        return (f"Chậm tiến độ: thiếu {fmt_int(pace.shortfall)} cống cho {pace.days} ngày tới",
+                WARN)
+    return f"Tiến độ: đủ cống cho {pace.covered_days} ngày tới", GOOD
+
+
+def pace_detail(pace: Pace) -> str:
+    """Dòng phụ: ước tính giá trị sẽ có so với tổng cống cần nộp."""
+    return f"Ước tính sẽ có {fmt_int(pace.available)} / cần {fmt_int(pace.needed)}"
 
 
 def risk_hint(sword: Sword, plan: Plan | None, odds: SwordOdds, pace: Pace | None,
@@ -141,10 +142,10 @@ def risk_hint(sword: Sword, plan: Plan | None, odds: SwordOdds, pace: Pace | Non
             tools.append("trong Xuất Thần")
         if ward_charges > 0 and odds.destruction > 0:  # nhát không thể gãy -> Vảy Rồng phí
             tools.append("dùng Vảy Rồng (Q)")
-        how = " " + " / ".join(tools) if tools else f" (kế hoạch x{plan.ratio:.2f})"
+        how = " " + " / ".join(tools) if tools else f" (kỳ vọng kế hoạch {fmt_ratio(plan.ratio)})"
         return f"Đang chậm tiến độ → đẩy {sword.tag}{how}"
     if (pace.comfortable and sword.fever_remaining <= 0
             and odds.destruction >= RISKY_DESTRUCTION):
         return (f"Đang dư tiến độ → chơi an toàn, đừng mạo hiểm {sword.tag} "
-                f"(gãy {odds.destruction:.0%})")
+                f"(Gãy {fmt_pct(odds.destruction)})")
     return None

@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from .save_reader import RunState
+from .text_format import SEP
 
 DEFAULT_RUN_LOG = (
     Path(os.environ.get("APPDATA", str(Path.home()))) / "ForgeTaxOverlay" / "runs.jsonl"
@@ -80,11 +81,12 @@ def append_run(path: Path, record: RunRecord, existing: list[RunRecord]) -> bool
 
 
 def _describe(r: RunRecord) -> str:
-    return f"ngày {r.round}{' THẮNG' if r.won else ''}, G max {r.highest_grade}"
+    return f"ngày {r.round}{' THẮNG' if r.won else ''}, cấp cao nhất +{r.highest_grade}"
 
 
 def summary_line(runs: list[RunRecord]) -> str:
     if not runs:
         return ""
     best = max(runs, key=lambda r: (r.won, r.round, r.highest_grade, r.gold_earned))
-    return f"Lượt chơi: {len(runs)} | tốt nhất: {_describe(best)} | gần nhất: {_describe(runs[-1])}"
+    return (f"Đã chơi {len(runs)} lượt{SEP}tốt nhất: {_describe(best)}"
+            f"{SEP}gần nhất: {_describe(runs[-1])}")
