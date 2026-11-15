@@ -52,6 +52,40 @@ each panel is fitted to the work area (taskbar excluded) of the monitor it sits 
 `(text, tag)` pairs. The detail panel is pushed back inside the work area if it would stick out.
 To try a small screen on a big one, set `FORGESEER_WORK_AREA=1920x1040`.
 
+## Drawing the panels
+
+Each panel is a `tk.Canvas` in a borderless Toplevel (`panel_canvas.py`). The window background is
+a key colour passed to `-transparentcolor`, so the area outside the rounded corners is fully
+transparent; `-alpha` still sets the opacity from the settings. Lines stay `(text, tag[, LOW])`.
+Decoration rides inside the tag (`panel_decor.py`): `"title|icon=sword"`, `"good|pill"`,
+or a separate bar row `("", "bar|kind=odds|indent=4|v=0.19,...", LOW)`. Wrapping, compact mode and
+column splitting don't need to know about any of it: `panel_layout` only treats a bar row as one
+line high, zero columns wide, never blank and never the start of a block, so a sword's bar stays
+in the same column as the sword. `format_state(..., decorate=True)` turns this on; without it the
+output is exactly what it was. Icons are drawn with canvas shapes (`panel_icons.py`) in a gutter
+one line wide on the left.
+
+### Alerts
+
+`alerts.detect_alerts` is pure and keeps an immutable memory. Frenzy fires when a sword enters it
+(the same sword again only after 3 s out of Frenzy, because a live snapshot can miss a beat);
+the tribute warning fires once per (run, day) as soon as the swords on hand can't cover what's
+left. The game doesn't expose a "day is about to end" signal I trust, so there's no countdown.
+A ★ relic on sale fires once per relic per day. Effects: border flash on the to-do panel (Frenzy,
+★) or the detail panel (tribute), plus `winsound.MessageBeep` on Frenzy unless
+`settings.sound_alerts` is `false` in config.json (read raw, defaults to on).
+
+### DPI
+
+`dpi.enable_per_monitor_awareness` asks for per-monitor v2 (`SetProcessDpiAwarenessContext(-4)`),
+then falls back to per-monitor v1 and system aware. `tk scaling` is one value for the whole
+process, so instead of changing it, every panel uses pixel-sized fonts computed from
+`GetDpiForWindow` of its own window (10 pt at 144 DPI = 20 px). Font metrics are measured once per
+DPI and cached. The hotkey loop checks every 80 ms whether a visible panel's DPI no longer matches
+its fonts (it was dragged to another monitor) and re-renders; padding and corner radius scale too.
+I could only test with two 100% monitors here, so mixed-DPI setups are checked by forcing the DPI
+value, not on real hardware yet.
+
 ## Languages
 
 Catalogs: vi, en, ko, ja, zh-CN, zh-TW, de, es, pt-BR, ru. Language is chosen as
@@ -101,7 +135,12 @@ I tested), so treat it as best effort; `--lang` always works.
 | `panel_layout.py` | Fits a panel to the monitor's work area: smaller font, compact mode, two columns, then a "… +N" cut. Pure. |
 | `legend.py` | F7 legend. |
 | `overlay.py` | The three overlay panels (details, to-do, legend), polling, hotkeys, live settings changes (opacity, font, panels, language, starting/stopping `LiveSource`). |
-| `overlay_windows.py` | Win32 bits: borderless topmost click-through Toplevels (WS_EX_TRANSPARENT), each with its own fonts (fitting can shrink one panel without the others), the monitor work area, font metrics, two-column fill. |
+| `overlay_windows.py` | Win32 bits: borderless topmost click-through Toplevels (WS_EX_TRANSPARENT, transparent key colour), each with its own pixel fonts for its monitor's DPI (fitting can shrink one panel without the others), the monitor work area, font metrics. |
+| `panel_canvas.py` | Draws a fitted layout on a Canvas: rounded background, icons, odds / progress bars, verdict pills, border flash. |
+| `panel_decor.py` | Pure: decoration tags, bar rows, bar geometry, pill position. |
+| `panel_icons.py` | Small icons drawn with canvas shapes. |
+| `alerts.py` | Pure: Frenzy / tribute / ★ alerts, each fired once per event. |
+| `dpi.py` | Per-monitor DPI awareness, `GetDpiForWindow`, points to pixels. |
 | `relic_names.py/.json` | Fallback relic names (my own Vietnamese translations of the ids); official names come from the game and are cached in `%APPDATA%\ForgeTaxOverlay\relic_texts.json` for every language. |
 
 ## What I know about the game
