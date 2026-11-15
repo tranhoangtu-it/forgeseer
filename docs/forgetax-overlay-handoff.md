@@ -30,6 +30,8 @@ Khởi động lại sau khi sửa: dừng tiến trình `pythonw` đang chạy 
 | `action_plan.py` | Khung "Việc cần làm" (góc phải). |
 | `formatter.py` | Khung chi tiết (góc trái). |
 | `overlay.py` | Hai cửa sổ tkinter trong suốt, click-through (WS_EX_TRANSPARENT). |
+| `live_relic_rank.js` | Nối SAU `live_capture.js` thành một script (`live_source.load_script_source`), dùng chung helper. Xếp hạng relic theo mức giảm gãy. |
+| `relic_rank.py` | Parse `relicRank`, xếp hạng (top 8 theo giảm gãy @+12, hòa -> +16 -> +8), khung "Relic giảm gãy", bước "★ Mua". |
 | `relic_names.py/.json` | Tên tự dịch (dự phòng); tên chính thức từ game cache ở `%APPDATA%\ForgeTaxOverlay\relic_texts.json`. |
 
 ## Dữ liệu game đã dò được (Unity 6000.5 IL2CPP + Obfuz – tên hàm bị làm rối, tên field serialize còn nguyên)
@@ -73,6 +75,20 @@ Khởi động lại sau khi sửa: dừng tiến trình `pythonw` đang chạy 
 - Bàn Thờ Hai Mặt (`altar`): campaign có `forcedResultSerial`, `forcedNextResult` (=-1 khi không ấn định).
   `ForgeCampaign.$UE(id, GPT6Sword, balance, bool)` trả mô tả động của relic nhưng với kiếm null trả
   "Chưa thể dùng lúc này." -> chưa xác định được mặt hôm nay.
+
+- Xếp hạng relic giảm gãy (payload `relicRank`, chỉ gửi khi bộ relic đổi và đã mô phỏng xong):
+  `{baseline:{"8"|"12"|"16":[5 phần nghìn]}, items:{id:{grade:[5]}}, owned:{id:{grade:[5]}}, shelfFull}`.
+  `items` = campaign giả lập + relic chưa có (kệ đầy vẫn thêm = ước lượng, overlay ghi "kệ đầy");
+  `owned` = campaign giả lập BỎ relic đang có; `baseline` = campaign giả lập không đổi. Mọi số do
+  `$pH(grade, fake, baseValue×hệ số^grade, false)`. Khóa cache = JSON `relics` (đổi phiếu vĩnh viễn
+  bằng Dao Gọt Số Mệnh/phiếu mà relic giữ nguyên -> chưa tính lại). Chạy 12 campaign giả lập mỗi lần
+  Update; đã chạy thật: 84 ứng viên, xong ~2 giây, không lỗi.
+  Ứng viên = mọi `item.<id>` trong bảng ngôn ngữ, TRỪ: `ward, rewind, sword, worldtree` (hàng Thương
+  nhân ma), đồ dùng ngay/tiêu hao `knife, starshard, powder, candle, chalk, oil, steelcore, echodust,
+  oblivion, contractink, delivery, creditshelf`, phiếu `ticketdamage/hold/success/great`, món ngừng bán
+  `ledger, safe`, mô tả chứa "Dùng ngay"/"không chiếm ô di vật"/"Tạm ngừng cung cấp", và relic có điều
+  kiện `brace, repair, star, thread, cornerstone, insurance, phoenix, spine, eternalseed` (hiện ở dòng
+  "Có điều kiện (không mô phỏng được)"). Lưu ý: `mold` và `thread` cùng tên "Chặn Giấy Nặng" trong bảng ngôn ngữ.
 
 ## Giả định chưa xác minh chắc
 - Planner coi một đợt Xuất Thần = `fever_strikes` nhát tỉ lệ Xuất Thần ngay sau 10 nhát thường
