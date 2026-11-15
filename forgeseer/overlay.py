@@ -11,7 +11,7 @@ import tkinter as tk
 from ctypes import wintypes
 from pathlib import Path
 
-from .config import DEFAULT_CONFIG_FILE, save_position
+from .config import DEFAULT_CONFIG_FILE, load_config, save_position, update_config
 from .day_log import DEFAULT_DAY_LOG, DayTracker, append_day, load_day_keys, observe_day
 from .formatter import DIM, GOOD, NORMAL, TITLE, WARN, format_state
 from .action_plan import ALERT, build_steps
@@ -100,7 +100,9 @@ class Overlay:
         self.names = names or {}
         self.lang_override = lang_override  # --lang: luôn dùng ngôn ngữ này
         self._system_lang = windows_ui_language()
-        set_language(choose_language(lang_override, None, self._system_lang))
+        # Ngôn ngữ game lần trước: dùng ngay từ đầu, trước khi kết nối được với game.
+        self._saved_game_lang = load_config(config_file).get("game_lang")
+        set_language(choose_language(lang_override, self._saved_game_lang, self._system_lang))
         self.texts = load_relic_texts(lang=get_language())  # tên chính thức từ lần kết nối trước
         self.config_file = config_file
         self._fever_tracker = FeverTracker()
@@ -251,7 +253,12 @@ class Overlay:
         """Đổi ngôn ngữ overlay theo ngôn ngữ game đang dùng (trừ khi có --lang)."""
         if self.live is None:
             return
-        lang = choose_language(self.lang_override, self.live.language(), self._system_lang)
+        game_lang = self.live.language()
+        if game_lang and game_lang != self._saved_game_lang:  # nhớ cho lần mở sau
+            self._saved_game_lang = game_lang
+            update_config(self.config_file, game_lang=game_lang)
+        lang = choose_language(self.lang_override, game_lang or self._saved_game_lang,
+                               self._system_lang)
         if lang != get_language():
             set_language(lang)
             _fill_text(self.legend_text, legend_lines())

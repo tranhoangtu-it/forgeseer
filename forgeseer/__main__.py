@@ -5,7 +5,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from .config import load_position
+from .config import load_config, load_position
 from .formatter import format_state
 from .i18n import SUPPORTED, choose_language, get_language, set_language, t, windows_ui_language
 from .relic_names import BUNDLED_NAMES_FILE, load_relic_names, load_relic_texts
@@ -50,7 +50,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     # --once không gắn vào game nên chỉ có --lang hoặc ngôn ngữ Windows.
-    set_language(choose_language(args.lang, None, windows_ui_language()))
+    set_language(choose_language(args.lang, load_config().get("game_lang"), windows_ui_language()))
     # Tên tự dịch làm nền, đè bằng tên chính thức đã cache từ game (nếu có).
     names = {**load_relic_names(args.relic_names),
              **{k: text.name for k, text in load_relic_texts(lang=get_language()).items()}}
