@@ -139,7 +139,7 @@ def risk_hint(sword: Sword, plan: Plan | None, odds: SwordOdds, pace: Pace | Non
         tools = []
         if sword.fever_remaining > 0 or plan.strikes_to_fever <= 2:
             tools.append("trong Xuất Thần")
-        if ward_charges > 0:
+        if ward_charges > 0 and odds.destruction > 0:  # nhát không thể gãy -> Vảy Rồng phí
             tools.append("dùng Vảy Rồng (Q)")
         how = " " + " / ".join(tools) if tools else f" (kế hoạch x{plan.ratio:.2f})"
         return f"Đang chậm tiến độ → đẩy {sword.tag}{how}"
