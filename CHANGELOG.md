@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- The panels now fit on any screen. On 1080p, 1440p or with Windows scaling above 100% the detail
+  panel used to run off the bottom; now it picks a smaller font, then hides the less important
+  lines (stats, relic ranking, shop descriptions, plan details), then uses two columns if there's
+  room, and as a last resort shows how many lines didn't fit. It follows the monitor the panel is
+  on, so moving it with F9 to another screen works too.
+
 ## 1.1.0 (2026-11-16)
 
 - Settings window at start-up: language (or follow the game), opacity, font size, which panels

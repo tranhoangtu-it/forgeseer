@@ -31,6 +31,27 @@ Hotkeys: F6 settings, F7 legend, F8 hide/show, F9 drag/lock (position is saved i
   from the catalog. Lines longer than `LINE_WIDTH` (72 columns, CJK counts double) wrap onto an
   indented continuation line.
 
+## Fitting the panels on screen
+
+Fonts are in points, so a panel grows with Windows scaling. The detail panel is about 520×1560 px
+at 4K 100% with font 10, which is taller than a 1080p screen and than 1440p at 125%. Every render
+each panel is fitted to the work area (taskbar excluded) of the monitor it sits on
+(`MonitorFromWindow` + `GetMonitorInfoW`, falling back to Tk's screen size), minus a 20 px margin.
+`panel_layout.fit_layout` is pure and works from font metrics measured once from Tk:
+
+1. the font size from the settings, then smaller sizes down to 8;
+2. compact mode: drop the lines marked low priority (third tuple element `LOW`: sword detail and
+   plan sub-lines, the break-reduction ranking incl. the conditional relics line, stats and the run
+   summary, shop description rows), at the largest size that fits;
+3. two columns, only if both together take at most half the work-area width; it prefers to break
+   between sections, then at the start of a block, so a sword is never split across columns;
+4. otherwise cut the panel and say how many lines are hidden (`layout.more`), always keeping the
+   status and hotkey lines.
+
+`format_state(..., keep_priority=True)` keeps the `LOW` marker; without it the result is the usual
+`(text, tag)` pairs. The detail panel is pushed back inside the work area if it would stick out.
+To try a small screen on a big one, set `FORGESEER_WORK_AREA=1920x1040`.
+
 ## Languages
 
 Catalogs: vi, en, ko, ja, zh-CN, zh-TW, de, es, pt-BR, ru. Language is chosen as
@@ -77,9 +98,10 @@ I tested), so treat it as best effort; `--lang` always works.
 | `action_plan.py` | Right-hand "To do" panel. |
 | `formatter.py` | Left-hand detail panel. |
 | `text_format.py` | Number formatting and line wrapping shared by every panel. |
+| `panel_layout.py` | Fits a panel to the monitor's work area: smaller font, compact mode, two columns, then a "… +N" cut. Pure. |
 | `legend.py` | F7 legend. |
 | `overlay.py` | The three overlay panels (details, to-do, legend), polling, hotkeys, live settings changes (opacity, font, panels, language, starting/stopping `LiveSource`). |
-| `overlay_windows.py` | Win32 bits: borderless topmost click-through Toplevels (WS_EX_TRANSPARENT), shared fonts that resize every panel at once. |
+| `overlay_windows.py` | Win32 bits: borderless topmost click-through Toplevels (WS_EX_TRANSPARENT), each with its own fonts (fitting can shrink one panel without the others), the monitor work area, font metrics, two-column fill. |
 | `relic_names.py/.json` | Fallback relic names (my own Vietnamese translations of the ids); official names come from the game and are cached in `%APPDATA%\ForgeTaxOverlay\relic_texts.json` for every language. |
 
 ## What I know about the game
