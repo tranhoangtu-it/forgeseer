@@ -18,18 +18,21 @@ Khởi động lại sau khi sửa: dừng tiến trình `pythonw` đang chạy 
 | `live_capture.js` | Script Frida chạy trong game (hook `GPT6ForgeRoom.Update`, main thread) gửi JSON trạng thái + tỉ lệ + mô phỏng. |
 | `live_source.py` | Luồng nền gắn Frida vào `ForgeTax.exe`, nhận message, cache tên relic. |
 | `advisor.py` | `SwordOdds`, EV 1 nhát, `ShopSimulation`, `GradeOddsTable`. |
-| `planner.py` | DP dừng tối ưu theo (grade, tích lực), có đợt Xuất Thần (`fever_strikes` nhát). |
+| `planner.py` | DP dừng tối ưu theo (grade, tích lực), có đợt Xuất Thần (`fever_strikes` nhát). `safe_only=True` = chỉ đập nhát không thể gãy (ước lượng thận trọng cho tiến độ). |
 | `fever_calibration.py` | Đo số nhát/đợt Xuất Thần của người chơi, trung bình lưu ở config.json khóa `fever` (mặc định 7). |
 | `reroll_advice.py` | Gợi ý đổi lượt máy relic (miễn phí / vàng dư ≥10× giá). |
 | `run_log.py` | Ghi `%APPDATA%\ForgeTaxOverlay\runs.jsonl` khi lượt kết thúc (dedupe theo anonymousRunId) + dòng tóm tắt. |
 | `config.py` | config.json dùng chung (vị trí `x/y`, `fever`); ghi = gộp khóa. |
-| `tribute.py` | Tình trạng cống, gợi ý ưu tiên đủ cống. |
+| `tribute.py` | Tình trạng cống, gợi ý ưu tiên đủ cống; `choose_tribute` = duyệt mọi tập con (n ≤ 12, nhiều hơn thì tham lam) chọn kiếm nộp đủ cống mà mất ít giá trị tương lai nhất (giá trị × `Plan.ratio`, kiếm đã xong = 1; hòa -> nộp dư ít nhất). |
+| `pace.py` | Tiến độ khế ước: ước tính kiếm đang giữ (giá trị × kỳ vọng nhát an toàn) + 3 kiếm +0/ngày so với cống cộng dồn 3 ngày tới -> "Tiến độ: đủ cho N ngày tới" / "Chậm: thiếu X". `risk_hint`: chậm -> đẩy kiếm chính (Xuất Thần / Vảy Rồng), dư ≥1.5× -> đừng mạo hiểm nhát gãy ≥10%; không bao giờ đè kiếm giữ cho cống HÔM NAY. Dòng "Cống sắp tới". |
+| `day_log.py` | Ghi `%APPDATA%\ForgeTaxOverlay\days.jsonl`: bản chụp cuối mỗi ngày (round, quota, delivered, holdings, top_grade, missed) khi round đổi / lượt kết thúc; dedupe theo (run_id, round). Chưa hiển thị trên UI. |
 | `sword_section.py` | Hiển thị kiếm + `sword_verdict` (thứ tự ưu tiên: Xuất Thần > cống > kế hoạch > EV). |
 | `shop_advice.py` | Gợi ý mua/bỏ/đổi relic (mô phỏng). |
 | `merchant_advice.py` | Gợi ý mua hàng Thương nhân ma. |
 | `action_plan.py` | Khung "Việc cần làm" (góc phải). |
 | `formatter.py` | Khung chi tiết (góc trái). |
 | `overlay.py` | Hai cửa sổ tkinter trong suốt, click-through (WS_EX_TRANSPARENT). |
+| `live_quota_schedule.js` | Nối sau `live_relic_rank.js`. `forecastSchedule` gửi `quotaSchedule` = cống từng ngày round+1..min(contractDeadlineRound, round+10) (`nextQuota` = phần tử đầu). |
 | `live_relic_rank.js` | Nối SAU `live_capture.js` thành một script (`live_source.load_script_source`), dùng chung helper. Xếp hạng relic theo mức giảm gãy. |
 | `relic_rank.py` | Parse `relicRank`, xếp hạng (top 8 theo giảm gãy @+12, hòa -> +16 -> +8), khung "Relic giảm gãy", bước "★ Mua". |
 | `relic_names.py/.json` | Tên tự dịch (dự phòng); tên chính thức từ game cache ở `%APPDATA%\ForgeTaxOverlay\relic_texts.json`. |
@@ -64,7 +67,9 @@ Khởi động lại sau khi sửa: dừng tiến trình `pythonw` đang chạy 
   N20 824000, N22 1280000, N24 2000000 (khác số liệu cộng đồng cũ). `$ef()` = 0.15 × cống = giá đổi lượt
   máy relic (N7: 1,305 G khớp chữ trên máy), `$pf()` = 1.5×, `$Pf()` = 2×. `nextTributeCredit` = giảm cho
   lần cống sau (thông báo `notice.quota_credit`). Overlay gọi `$Gf` trên campaign giả lập round+1,
-  tributeCredit = nextTributeCredit.
+  tributeCredit = nextTributeCredit; các ngày sau tributeCredit = 0 (phần nộp dư tương lai chưa biết
+  -> là mức trần). Đã chạy thật (ngày 7): `quotaSchedule` = 13200, 20100, 29500, 44200, 65500, 96400,
+  140000, 204000, 290000, 413000 – khớp đường cống ở trên.
 - `ForgeEnhancementBalance`: baseValue@24=320, gradeMultiplier@32=1.5, maxGrade@36=299, openingQuota@40=1800.
 - Máy relic `GPT6ForgeRoom.vending` (ForgeRelicVending): TextMesh `rerollText` hiện "1,305 G" hoặc
   "1 LẦN MIỄN PHÍ" (`rework.free_reroll`); đọc bằng `TextMesh.get_text`. Campaign có `rerolls`,
@@ -91,6 +96,11 @@ Khởi động lại sau khi sửa: dừng tiến trình `pythonw` đang chạy 
   "Có điều kiện (không mô phỏng được)"). Lưu ý: `mold` và `thread` cùng tên "Chặn Giấy Nặng" trong bảng ngôn ngữ.
 
 ## Giả định chưa xác minh chắc
+- Tiến độ: mỗi ngày nhận 3 kiếm +0 mới (`pace.FRESH_SWORDS_PER_DAY`, giá trị 320). Ước tính dùng kỳ
+  vọng khi chỉ đập nhát không thể gãy vì với bảng tỉ lệ thật: kỳ vọng kế hoạch tối ưu của kiếm +0
+  ≈ x81 (+3 x14.6, +6 x2.5) do ca hiếm lên rất cao, còn trung vị = 0 -> cả hai đều vô dụng để đo
+  tiến độ. Ước tính hiện tại thận trọng (dễ báo "Chậm").
+- Lịch cống các ngày sau ngày mai có thể giảm nhờ nộp dư (tributeCredit) – overlay hiện mức trần.
 - Planner coi một đợt Xuất Thần = `fever_strikes` nhát tỉ lệ Xuất Thần ngay sau 10 nhát thường
   (số nhát hiệu chỉnh theo người chơi; mặc định 7 theo hướng dẫn cộng đồng khi chưa có mẫu).
 - Gợi ý đổi lượt: ngưỡng "vàng dư" = ví ≥ 10 × giá (heuristic, vàng còn dùng cho Thương nhân ma).
