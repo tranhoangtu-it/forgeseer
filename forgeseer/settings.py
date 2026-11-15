@@ -28,6 +28,7 @@ class Settings:
     show_legend: bool = False
     live: bool = True
     skip_settings: bool = False
+    check_updates: bool = True  # ask GitHub for a newer release at start-up
 
     @property
     def alpha(self) -> float:

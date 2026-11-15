@@ -110,3 +110,9 @@ def test_settings_screen_text_exists_in_every_language():
         set_language(lang)
         assert all(t(key) != key and t(key).strip() for key in keys), lang
         assert t("hint.keys").startswith("F6"), lang
+
+
+def test_update_check_flag_defaults_on_and_ignores_bad_values():
+    assert Settings().check_updates is True
+    assert from_dict({"check_updates": False}).check_updates is False
+    assert from_dict({"check_updates": "no"}).check_updates is True
