@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.1.1 (2026-11-16)
 
 - The panels now fit on any screen. On 1080p, 1440p or with Windows scaling above 100% the detail
   panel used to run off the bottom; now it picks a smaller font, then hides the less important
