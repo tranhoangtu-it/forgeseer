@@ -216,3 +216,28 @@ def test_keep_priority_marks_optional_lines_only_when_asked():
     assert any("Giữ nguyên cấp kiếm" in text for text in low)  # mô tả món trong cửa hàng
     assert t("stats.title") in low  # cả khối thống kê
     assert not any("Ngày 7" in text for text in low)
+
+
+def test_decorate_adds_bars_icons_and_pills_without_changing_text():
+    from forgeseer.advisor import SwordOdds
+    from forgeseer.panel_decor import ODDS, PROGRESS, base_tag, is_bar, parse_bar, tag_extras
+
+    sword = _sword(value=3000)
+    odds = {sword.serial: (SwordOdds.from_permille([190, 30, 160, 480, 140]),
+                           SwordOdds.from_permille([0, 20, 100, 600, 280]))}
+    state = _state(swords=(sword,))
+    args = dict(odds=odds, quota=2000, schedule=(8700.0, 13200.0, 20100.0), keep_priority=True)
+
+    plain = format_state(state, **args)
+    fancy = format_state(state, decorate=True, **args)
+
+    bars = [parse_bar(line[1]) for line in fancy if is_bar(line)]
+    assert [b.kind for b in bars] == [PROGRESS, PROGRESS, ODDS]  # cống, tiến độ, tỉ lệ kiếm
+    assert bars[2].values == (0.19, 0.03, 0.16, 0.48, 0.14)
+    assert all(line[2] == "low" for line in fancy if is_bar(line))
+    text_rows = [line for line in fancy if not is_bar(line)]
+    assert [line[0] for line in text_rows] == [line[0] for line in plain]
+    assert [base_tag(line[1]) for line in text_rows] == [line[1] for line in plain]
+    icons = [tag_extras(line[1]).get("icon") for line in fancy if "icon=" in line[1]]
+    assert icons[:3] == ["forge", "tribute", "sword"]
+    assert any("pill" in tag_extras(line[1]) and "→" in line[0] for line in fancy)

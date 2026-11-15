@@ -13,6 +13,8 @@ from dataclasses import dataclass
 from .advisor import Advice, GradeOddsTable, SwordOdds, advise
 from .fever_calibration import DEFAULT_FEVER_STRIKES
 from .i18n import t
+from .panel_decor import PILL, PILL_SAFE, odds_bar, progress_bar, with_icon
+from .panel_decor import decorate as decorate_tag
 from .pace import contract_pace, pace_detail, pace_line, schedule_lines
 from .planner import FEVER_THRESHOLD, Plan, plan_sword
 from .save_reader import RunState, Sword, display_sort_key
@@ -28,8 +30,9 @@ MAX_GROUPS_SHOWN = 8
 def tribute_lines(state: RunState, quota: float, next_quota: float = 0.0,
                   schedule: tuple[float, ...] = (), table: GradeOddsTable | None = None,
                   multiplier: float = 1.5,
-                  fever_strikes: int = DEFAULT_FEVER_STRIKES) -> list[Line]:
-    """Dòng cống hôm nay + cống các ngày tới + tiến độ (khi biết lịch cống)."""
+                  fever_strikes: int = DEFAULT_FEVER_STRIKES, decorate: bool = False) -> list[Line]:
+    """Dòng cống hôm nay + cống các ngày tới + tiến độ (khi biết lịch cống).
+    ``decorate``: thêm biểu tượng và thanh tiến độ cống / tiến độ khế ước (overlay)."""
     status = tribute_status(state, quota)
     if status is None:
         return []
@@ -42,6 +45,9 @@ def tribute_lines(state: RunState, quota: float, next_quota: float = 0.0,
     else:
         lines = [(head + t("tribute.enough_if_offered"), GOOD)]
     lines.append(("  " + t("tribute.holdings", value=fmt_int(status.holdings)), NORMAL))
+    if decorate:
+        lines.append(progress_bar(status.delivered, status.holdings, status.quota, 2,
+                                  ok=status.shortfall <= 0))
     if schedule:
         lines += [("  " + row, DIM) for row in schedule_lines(state.round, schedule)]
     live = [sw for sw in state.swords if sw.is_live]
@@ -49,7 +55,9 @@ def tribute_lines(state: RunState, quota: float, next_quota: float = 0.0,
     if pace is not None:
         text, tag = pace_line(pace)
         lines += [("  " + text, tag), ("    " + pace_detail(pace), DIM)]
-    return lines
+        if decorate:
+            lines.append(progress_bar(pace.available, 0.0, pace.needed, 4, ok=not pace.behind))
+    return with_icon(lines, "tribute") if decorate else lines
 
 
 def _group_key(sw: Sword, odds: OddsMap) -> tuple:
@@ -117,16 +125,19 @@ def sword_verdict(sw: Sword, odds: OddsMap, multiplier: float, status: TributeSt
 
 
 def _advice_lines(sw: Sword, odds: OddsMap, multiplier: float, status: TributeStatus | None,
-                  table: GradeOddsTable | None, fever_strikes: int) -> list[Line]:
+                  table: GradeOddsTable | None, fever_strikes: int,
+                  decorated: bool = False) -> list[Line]:
     v = sword_verdict(sw, odds, multiplier, status, table, fever_strikes)
     if v is None:
         return []
     o, one_step, plan = v.odds, v.one_step, v.plan
-    lines: list[Line] = [
-        (f"    {odds_text(o)}", NORMAL),
-        (f"    → {v.verdict}{SEP}" + t("sword.one_strike_ev", ratio=fmt_ratio(one_step.ev_ratio)),
-         GOOD if v.strike else WARN),
-    ]
+    tag = GOOD if v.strike else WARN
+    lines: list[Line] = [(f"    {odds_text(o)}", NORMAL)]
+    if decorated:
+        lines.append(odds_bar((o.destruction, o.damage, o.hold, o.success, o.great), 4))
+        tag = decorate_tag(tag, **{PILL: PILL_SAFE if v.safe else True})
+    lines.append((f"    → {v.verdict}{SEP}"
+                  + t("sword.one_strike_ev", ratio=fmt_ratio(one_step.ev_ratio)), tag))
     if plan is not None:
         fever_note = (t("sword.fever_next") if plan.strikes_to_fever == 0
                       else t("sword.fever_in", count=plan.strikes_to_fever))
@@ -144,9 +155,11 @@ def odds_text(o: SwordOdds) -> str:
 
 def sword_lines(state: RunState, odds: OddsMap, multiplier: float, quota: float,
                 table: GradeOddsTable | None,
-                fever_strikes: int = DEFAULT_FEVER_STRIKES) -> list[Line]:
+                fever_strikes: int = DEFAULT_FEVER_STRIKES, decorate: bool = False) -> list[Line]:
     live = sorted((sw for sw in state.swords if sw.is_live), key=display_sort_key)
     lines: list[Line] = [(t("sword.title", count=len(live)), TITLE)]
+    if decorate:
+        lines = with_icon(lines, "sword")
     if not live:
         return lines + [("  " + t("sword.none"), DIM)]
     groups: dict[tuple, list[Sword]] = {}
@@ -158,7 +171,7 @@ def sword_lines(state: RunState, odds: OddsMap, multiplier: float, quota: float,
         head, details = _label(sw, len(members))
         lines.append(("  " + head, GOOD if sw.heated else NORMAL))
         lines.append(("    " + SEP.join(details), DIM, LOW))
-        lines += _advice_lines(sw, odds, multiplier, status, table, fever_strikes)
+        lines += _advice_lines(sw, odds, multiplier, status, table, fever_strikes, decorate)
     hidden = sum(len(m) for m in list(groups.values())[MAX_GROUPS_SHOWN:])
     if hidden:
         lines.append(("  " + t("sword.hidden", count=hidden), DIM))
