@@ -1,6 +1,7 @@
 from forgetax_overlay.action_plan import build_steps, choose_tribute
 from forgetax_overlay.advisor import ShopSimulation, SwordOdds
 from forgetax_overlay.merchant_advice import MerchantItem
+from forgetax_overlay.relic_rank import parse_relic_rank
 from forgetax_overlay.save_reader import MerchantOffer, Offer, RunState, Sword
 
 RISKY = SwordOdds.from_permille([350, 30, 240, 330, 50])
@@ -149,3 +150,32 @@ def test_free_reroll_suggested_when_no_offer_helps():
                              reroll_text="1 LẦN MIỄN PHÍ"))
 
     assert "đổi lượt (miễn phí)" in text
+
+
+def _rank(*ids):
+    base = {"8": [50, 0, 0, 0, 0], "12": [150, 0, 0, 0, 0], "16": [250, 0, 0, 0, 0]}
+    items = {rid: {"8": [40, 0, 0, 0, 0], "12": [150 - 10 * (i + 1), 0, 0, 0, 0],
+                   "16": [200, 0, 0, 0, 0]} for i, rid in enumerate(ids)}
+    return parse_relic_rank({"baseline": base, "items": items})
+
+
+def test_star_step_for_top_ranked_shop_offer_and_no_reroll():
+    state = _state((_sword(1, 5000, 8),), shopping=True, offers=(Offer("seal", 1, False),))
+
+    text = _text(build_steps(state, {1: (RISKY, SAFE)}, 1.5, names={"seal": "Nút Thắt Đen"},
+                             reroll_text="1 LẦN MIỄN PHÍ", relic_rank=_rank("seal")))
+
+    assert "★ Mua Nút Thắt Đen: giảm gãy @+12 15.0%->14.0%" in text
+    assert "đổi lượt" not in text
+
+
+def test_star_marks_best_purchase_instead_of_duplicating():
+    better = SwordOdds.from_permille([50, 20, 80, 750, 100])
+    state = _state((_sword(1, 5000, 8),), shopping=True, offers=(Offer("pin", 1, False),))
+    sim = ShopSimulation(buy={"pin": {1: better}})
+
+    text = _text(build_steps(state, {1: (RISKY, SAFE)}, 1.5, shop_sim=sim, names={"pin": "Kim Ghim"},
+                             relic_rank=_rank("pin")))
+
+    assert "★ Mua relic Kim Ghim" in text
+    assert text.count("Kim Ghim") == 1

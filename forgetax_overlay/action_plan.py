@@ -9,6 +9,7 @@ from .advisor import GradeOddsTable, ShopSimulation, SwordOdds
 from .fever_calibration import DEFAULT_FEVER_STRIKES
 from .merchant_advice import MerchantItem
 from .relic_names import display_name
+from .relic_rank import RelicRank, star_step, top_offer
 from .reroll_advice import parse_reroll_text, reroll_line
 from .save_reader import RunState, Sword
 from .shop_advice import best_break_reduction, best_purchase, target_sword
@@ -77,12 +78,55 @@ def _tomorrow_line(next_quota: float, left: float) -> Line:
     return head + f" -> cần tăng x{next_quota / left:.1f}", WARN
 
 
+def offered_ids(state: RunState, merchant: list[MerchantItem] | None) -> list[str]:
+    """Id món đang bán chưa mua: máy relic (giờ mua sắm) + Thương nhân ma."""
+    shop = [o.id for o in state.offers if not o.sold] if state.shopping else []
+    return shop + [i.offer.id for i in merchant or [] if not i.offer.sold]
+
+
+def _shop_steps(state: RunState, top: Sword | None, odds: OddsMap, multiplier: float,
+                sim: ShopSimulation, names: dict[str, str], reroll_text: str,
+                relic_rank: RelicRank | None) -> list[Line]:
+    """Mua relic tăng EV / giảm gãy; ★ = món nằm trong top giảm gãy (không lặp tên 2 lần)."""
+    lines: list[Line] = []
+    offer_ids = [o.id for o in state.offers if not o.sold]
+    starred = top_offer(relic_rank, offer_ids)
+    star_id = starred.id if starred is not None else None
+    best = best_purchase(offer_ids, top, odds, sim, multiplier)
+    hint = None
+    if best is not None:
+        offer_id, drop, ev0, ev1 = best
+        swap = f", bỏ {display_name(drop, names)}" if drop else ""
+        mark = "★ " if offer_id == star_id else ""
+        lines.append((f"{mark}Mua relic {display_name(offer_id, names)}{swap} "
+                      f"(EV x{ev0:.2f}->{ev1:.2f}; trả bằng kiếm +0)", GOOD))
+    else:
+        hint = best_break_reduction(offer_ids, top, sim, multiplier)
+        if hint is not None and hint[0] != star_id:
+            offer_id, drop, grade, before, after = hint
+            swap = f", bỏ {display_name(drop, names)}" if drop else ""
+            lines.append((f"Cân nhắc relic {display_name(offer_id, names)}{swap}: @+{grade} gãy "
+                          f"{before.destruction:.0%}->{after.destruction:.0%} (lợi khi kiếm lên cao)",
+                          NORMAL))
+    if star_id is not None and (best is None or best[0] != star_id):
+        star = star_step(relic_rank, offer_ids, names)
+        if star is not None:
+            lines.append(star)
+    if best is None:
+        reroll = reroll_line(parse_reroll_text(reroll_text), state.wallet,
+                             has_good_offer=hint is not None or star_id is not None)
+        if reroll is not None:
+            lines.append(reroll)
+    return lines
+
+
 def build_steps(state: RunState | None, odds: OddsMap, multiplier: float, quota: float = 0.0,
                 table: GradeOddsTable | None = None, shop_sim: ShopSimulation | None = None,
                 names: dict[str, str] | None = None,
                 merchant: list[MerchantItem] | None = None,
                 fever_strikes: int = DEFAULT_FEVER_STRIKES,
-                next_quota: float = 0.0, reroll_text: str = "") -> list[Line]:
+                next_quota: float = 0.0, reroll_text: str = "",
+                relic_rank: RelicRank | None = None) -> list[Line]:
     lines: list[Line] = [("Việc cần làm", TITLE)]
     if state is None:
         return lines + [("Chưa có dữ liệu lượt chơi.", DIM)]
@@ -124,30 +168,17 @@ def build_steps(state: RunState | None, odds: OddsMap, multiplier: float, quota:
         lines.append((f"Nếu {top.tag} gãy: bấm R (Dây Cót) để hồi", DIM))
 
     if state.shopping:  # 4. Máy relic
-        offer_ids = [o.id for o in state.offers if not o.sold]
-        best = best_purchase(offer_ids, top, odds, shop_sim or ShopSimulation(), multiplier)
-        if best is not None:
-            offer_id, drop, ev0, ev1 = best
-            swap = f", bỏ {display_name(drop, names)}" if drop else ""
-            lines.append((f"Mua relic {display_name(offer_id, names)}{swap} "
-                          f"(EV x{ev0:.2f}->{ev1:.2f}; trả bằng kiếm +0)", GOOD))
-        else:
-            hint = best_break_reduction(offer_ids, top, shop_sim or ShopSimulation(), multiplier)
-            if hint is not None:
-                offer_id, drop, grade, before, after = hint
-                swap = f", bỏ {display_name(drop, names)}" if drop else ""
-                lines.append((f"Cân nhắc relic {display_name(offer_id, names)}{swap}: @+{grade} gãy "
-                              f"{before.destruction:.0%}->{after.destruction:.0%} (lợi khi kiếm lên cao)",
-                              NORMAL))
-            reroll = reroll_line(parse_reroll_text(reroll_text), state.wallet,
-                                 has_good_offer=hint is not None)
-            if reroll is not None:
-                lines.append(reroll)
+        lines += _shop_steps(state, top, odds, multiplier, shop_sim or ShopSimulation(), names,
+                             reroll_text, relic_rank)
 
     for item in sorted(merchant or [], key=lambda i: i.ratio or 0, reverse=True):  # 5. Thương nhân
         if item.verdict == "MUA":
             name = MERCHANT_SWORD_NAMES.get(item.offer.id) or display_name(item.offer.id, names)
             lines.append((f"Thương nhân: mua {name} - {item.offer.price:,.0f}", GOOD))
+    merchant_ids = [i.offer.id for i in merchant or [] if not i.offer.sold]
+    star = star_step(relic_rank, merchant_ids, names)  # hàng Thương nhân nằm trong top giảm gãy
+    if star is not None and star not in lines:
+        lines.append(star)
 
     if len(lines) == 1:
         lines.append(("Không có việc cần làm ngay", DIM))

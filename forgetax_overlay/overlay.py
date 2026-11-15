@@ -246,7 +246,7 @@ class Overlay:
     # ---------- vẽ ----------
     def render(self) -> None:
         odds, multiplier, shop_sim, quota, grade_odds = ({}, 1.5, None, 0.0, None)
-        next_quota, reroll_text = 0.0, ""
+        next_quota, reroll_text, relic_rank = 0.0, "", None
         texts = self.texts
         if self.live is not None:
             texts = self.live.texts() or texts  # tên chính thức mới nhất từ game
@@ -257,6 +257,7 @@ class Overlay:
                 next_quota = self.live.next_quota()
                 reroll_text = self.live.reroll_text()
                 grade_odds = self.live.grade_odds()
+                relic_rank = self.live.relic_rank()
         names = {**self.names, **{k: t.name for k, t in texts.items()}}
         descriptions = {k: t.description for k, t in texts.items()}
         fever_strikes = self._fever_stats.strikes
@@ -264,12 +265,12 @@ class Overlay:
                     if self.state is not None and merchant_active(self.state) else [])
         lines = format_state(self.state, names, odds, multiplier, descriptions, shop_sim,
                              quota, grade_odds, merchant, fever_strikes, next_quota,
-                             summary_line(self._runs))
+                             summary_line(self._runs), relic_rank)
         hint = "F9: khóa vị trí" if self._drag_mode else "F8 ẩn | F9 di chuyển | F10 thoát"
         lines = lines + [(self.status, DIM), (hint, WARN if self._drag_mode else DIM)]
         _fill_text(self.text, lines)
         steps = build_steps(self.state, odds, multiplier, quota, grade_odds, shop_sim, names, merchant,
-                            fever_strikes, next_quota, reroll_text)
+                            fever_strikes, next_quota, reroll_text, relic_rank)
         _fill_text(self.panel_text, steps)
         self.panel.update_idletasks()  # đặt khung "Việc cần làm" sát mép phải màn hình
         x = self.panel.winfo_screenwidth() - self.panel.winfo_reqwidth() - PANEL_MARGIN

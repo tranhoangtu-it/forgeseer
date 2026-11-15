@@ -1,5 +1,6 @@
 from forgetax_overlay.advisor import ShopSimulation
 from forgetax_overlay.formatter import format_state
+from forgetax_overlay.relic_rank import parse_relic_rank
 from forgetax_overlay.save_reader import Offer, Relic, RunState, Sword
 
 
@@ -170,3 +171,20 @@ def test_run_summary_appended_when_given():
     text = _texts(format_state(_state(), runs_summary="Lượt chơi: 2"))
 
     assert "Lượt chơi: 2" in text
+
+
+def test_relic_rank_section_stars_unsold_shop_offer():
+    rank = parse_relic_rank({"baseline": {"8": [50, 0, 0, 0, 0], "12": [150, 0, 0, 0, 0],
+                                          "16": [250, 0, 0, 0, 0]},
+                             "items": {"hold": {"8": [40, 0, 0, 0, 0], "12": [120, 0, 0, 0, 0],
+                                                "16": [200, 0, 0, 0, 0]}}})
+    text = _texts(format_state(_state(shopping=True), names={"hold": "Đá Phong Ấn"},
+                               relic_rank=rank))
+
+    assert "Relic giảm gãy (@+8/+12/+16, chỉ hiệu ứng cố định):" in text
+    assert "★ Đá Phong Ấn: gãy 5.0%->4.0% | 15.0%->12.0% | 25.0%->20.0%" in text
+    assert "Có điều kiện (không mô phỏng được):" in text
+
+
+def test_relic_rank_section_hidden_without_simulation():
+    assert "Relic giảm gãy" not in _texts(format_state(_state()))

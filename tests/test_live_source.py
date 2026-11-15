@@ -1,6 +1,6 @@
 import json
 
-from forgetax_overlay.live_source import LiveSource
+from forgetax_overlay.live_source import LiveSource, load_script_source
 
 
 def _run_message(payload: dict) -> dict:
@@ -145,3 +145,26 @@ def test_run_message_with_reroll_text():
     live.handle_message(message)
 
     assert live.reroll_text() == "390 G"
+
+
+def test_run_message_with_relic_rank_is_kept_until_replaced():
+    live = LiveSource(clock=lambda: 1.0)
+    message = _run_message({"campaign": {}, "swords": []})
+    message["payload"]["relicRank"] = {"baseline": {"12": [150, 100, 300, 400, 50]},
+                                       "items": {"seal": {"12": [128, 100, 300, 400, 72]}},
+                                       "shelfFull": False}
+
+    live.handle_message(message)
+    live.handle_message(_run_message({"campaign": {}, "swords": []}))
+
+    rank = live.relic_rank()
+    assert rank.items["seal"][12].destruction == 0.128
+    assert rank.baseline[12].destruction == 0.15
+
+
+def test_script_source_joins_capture_and_relic_rank_files():
+    source = load_script_source()
+
+    assert "Interceptor.attach" in source
+    assert "function collectRelicRank" in source
+    assert source.index("findCaptureMethod") < source.index("function collectRelicRank")

@@ -3,11 +3,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .action_plan import MERCHANT_SWORD_NAMES
+from .action_plan import MERCHANT_SWORD_NAMES, offered_ids
 from .advisor import GradeOddsTable, ShopSimulation, SwordOdds
 from .fever_calibration import DEFAULT_FEVER_STRIKES
 from .merchant_advice import MerchantItem
 from .relic_names import display_name
+from .relic_rank import RelicRank, rank_relics, relic_rank_lines
 from .save_reader import RunState, Sword
 from .shop_advice import best_drop, buy_line, drop_line, grade_line, target_sword
 from .sword_section import sword_lines, tribute_lines
@@ -29,8 +30,10 @@ def format_state(state: RunState | None, names: dict[str, str] | None = None,
                  grade_odds: GradeOddsTable | None = None,
                  merchant: list[MerchantItem] | None = None,
                  fever_strikes: int = DEFAULT_FEVER_STRIKES,
-                 next_quota: float = 0.0, runs_summary: str = "") -> list[Line]:
-    """``names``: id relic -> tên; ``odds``/``shop_sim``/``quota``/``grade_odds``: chỉ có khi LIVE."""
+                 next_quota: float = 0.0, runs_summary: str = "",
+                 relic_rank: RelicRank | None = None) -> list[Line]:
+    """``names``: id relic -> tên; ``odds``/``shop_sim``/``quota``/``grade_odds``/``relic_rank``:
+    chỉ có khi LIVE."""
     if state is None:
         return [("ForgeTax", TITLE), ("Chưa có lượt chơi nào được lưu.", DIM)]
     names = names or {}
@@ -42,20 +45,27 @@ def format_state(state: RunState | None, names: dict[str, str] | None = None,
     ctx = _AdviceContext(target_sword(state.swords, odds), odds,
                          shop_sim or ShopSimulation(), multiplier, names)
     lines += _relic_lines(state, names, ctx)
+    on_sale = offered_ids(state, merchant)
+    lines += relic_rank_lines(relic_rank, names, on_sale)
     if state.shopping:
         lines += _shop_lines(state, names, descriptions or {}, ctx)
     if merchant:
-        lines += _merchant_lines(merchant, names)
+        starred = {r.id for r in rank_relics(relic_rank)}
+        lines += _merchant_lines(merchant, names, starred)
     lines += _stats_lines(state, fever_strikes)
     if runs_summary:
         lines.append((runs_summary, DIM))
     return lines
 
 
-def _merchant_lines(items: list[MerchantItem], names: dict[str, str]) -> list[Line]:
+def _merchant_lines(items: list[MerchantItem], names: dict[str, str],
+                    starred: set[str]) -> list[Line]:
+    """``starred``: id nằm trong top relic giảm gãy -> thêm "★"."""
     lines: list[Line] = [("Thương nhân ma:", TITLE)]
     for item in items:
         name = MERCHANT_SWORD_NAMES.get(item.offer.id) or display_name(item.offer.id, names)
+        if item.offer.id in starred and not item.offer.sold:
+            name = f"★ {name}"
         ratio = f" x{item.ratio:.1f}" if item.ratio is not None else ""
         mark = "  <- mua trước" if item.best else ""
         note = f" ({item.note})" if item.note else ""

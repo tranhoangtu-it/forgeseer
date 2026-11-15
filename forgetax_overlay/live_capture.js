@@ -420,8 +420,10 @@ function readItemTexts() {
   return { lang, items };
 }
 
+let itemTexts = null;  // dùng lại ở live_relic_rank.js (danh sách relic ứng viên)
 try {
   const texts = readItemTexts();
+  itemTexts = texts;
   if (texts) send({ kind: 'texts', lang: texts.lang, items: texts.items });
 } catch (e) {
   send({ kind: 'error', message: 'Không đọc được tên relic: ' + e });
@@ -444,7 +446,8 @@ Interceptor.attach(update.readPointer(), {
       const quota = readQuota(args[0]);
       const reroll = json.includes('"shopping":true') ? readRerollText(args[0]) : '';
       const key = json + JSON.stringify(extra) + quota + reroll;
-      if (json && (key !== lastJson || changed)) {
+      const rank = collectRelicRank(args[0], extra.multiplier);  // live_relic_rank.js
+      if (json && (key !== lastJson || changed || rank)) {
         lastJson = key;
         const message = { kind: 'run', json, odds: extra.odds, multiplier: extra.multiplier, quota,
                           nextQuota: forecastQuota(args[0], quota), rerollText: reroll };
@@ -452,6 +455,7 @@ Interceptor.attach(update.readPointer(), {
           message.shopSim = changed.shopSim;
           if (changed.gradeOdds) message.gradeOdds = changed.gradeOdds;
         }
+        if (rank) message.relicRank = rank;
         send(message);
       }
     } catch (e) {

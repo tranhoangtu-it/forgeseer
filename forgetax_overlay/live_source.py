@@ -15,6 +15,7 @@ from typing import Any, Callable
 
 from .advisor import GradeOddsTable, PerSword, ShopSimulation, SwordOdds
 from .relic_names import TEXTS_CACHE_FILE, RelicText, parse_relic_texts
+from .relic_rank import RelicRank, parse_relic_rank
 from .save_reader import RunState, SaveReadError, parse_run_save
 
 # serial kiếm -> (tỉ lệ bình thường, tỉ lệ khi đang fever)
@@ -22,8 +23,15 @@ OddsMap = dict[int, tuple[SwordOdds, SwordOdds]]
 DEFAULT_MULTIPLIER = 1.5
 
 PROCESS_NAME = "ForgeTax.exe"
-SCRIPT_FILE = Path(__file__).with_name("live_capture.js")
+# Nối thành MỘT script Frida theo thứ tự: live_capture.js định nghĩa helper dùng chung + hook
+# Update; các file sau dùng lại helper đó (cùng phạm vi top-level).
+SCRIPT_FILES = (Path(__file__).with_name("live_capture.js"),
+                Path(__file__).with_name("live_relic_rank.js"))
 RETRY_SECONDS = 3.0
+
+
+def load_script_source() -> str:
+    return "\n".join(path.read_text(encoding="utf-8") for path in SCRIPT_FILES)
 
 
 class LiveSource:
@@ -44,6 +52,7 @@ class LiveSource:
         self._next_quota = 0.0
         self._reroll_text = ""
         self._grade_odds = GradeOddsTable()
+        self._relic_rank = RelicRank()
         self._multiplier = DEFAULT_MULTIPLIER
         self._session: Any = None
         self._stop = threading.Event()
@@ -80,6 +89,11 @@ class LiveSource:
     def grade_odds(self) -> GradeOddsTable:
         with self._lock:
             return self._grade_odds
+
+    def relic_rank(self) -> RelicRank:
+        """Mô phỏng mức giảm gãy của từng relic chưa có (rỗng nếu chưa nhận)."""
+        with self._lock:
+            return self._relic_rank
 
     def shop_simulation(self) -> ShopSimulation:
         with self._lock:
@@ -133,6 +147,8 @@ class LiveSource:
                 self._shop_sim = _parse_shop_sim(payload["shopSim"])
             if "gradeOdds" in payload:
                 self._grade_odds = _parse_grade_odds(payload["gradeOdds"])
+            if "relicRank" in payload:  # chỉ gửi khi bộ relic đổi và đã mô phỏng xong
+                self._relic_rank = parse_relic_rank(payload["relicRank"])
             quota = payload.get("quota")
             if isinstance(quota, (int, float)):
                 self._quota = float(quota)
@@ -163,7 +179,7 @@ class LiveSource:
         except ImportError:
             self.status = "Đọc trực tiếp tắt: chưa cài frida (pip install frida)"
             return
-        source = SCRIPT_FILE.read_text(encoding="utf-8")
+        source = load_script_source()
         while not self._stop.is_set():
             if self._session is None:
                 self._try_attach(frida, source)
